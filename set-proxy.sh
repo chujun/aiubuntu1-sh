@@ -150,23 +150,28 @@ show_proxy() {
 }
 
 test_proxy() {
+    if [ -z "$http_proxy" ] && [ -f ~/.proxy_env ]; then
+        source ~/.proxy_env
+    fi
+    
     if [ -z "$http_proxy" ]; then
         echo -e "${RED}[ERROR]${NC} 代理未设置，请先运行 $0 -s"
         return 1
     fi
     
+    echo -e "${BLUE}当前代理: $http_proxy${NC}"
     echo -e "${BLUE}测试代理连通性...${NC}"
     
-    if curl -s --max-time 5 -x "$http_proxy" https://www.google.com > /dev/null 2>&1; then
+    if curl -s --max-time 10 -x "$http_proxy" https://www.google.com > /dev/null 2>&1; then
         echo -e "${GREEN}[OK]${NC} 代理连接成功 (Google)"
     else
-        echo -e "${RED}[ERROR]${NC} 代理连接失败"
+        echo -e "${RED}[ERROR]${NC} 代理连接失败 (Google)"
     fi
     
-    if curl -s --max-time 5 -x "$http_proxy" https://github.com > /dev/null 2>&1; then
+    if curl -s --max-time 10 -x "$http_proxy" https://github.com > /dev/null 2>&1; then
         echo -e "${GREEN}[OK]${NC} 代理连接成功 (GitHub)"
     else
-        echo -e "${RED}[ERROR]${NC} 代理连接失败"
+        echo -e "${RED}[ERROR]${NC} 代理连接失败 (GitHub)"
     fi
 }
 
