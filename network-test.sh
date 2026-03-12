@@ -8,8 +8,6 @@
 # 版本：3.3
 # 日期：2026-03-06
 
-set -e
-
 # 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -477,13 +475,23 @@ test_ping() {
         ping_output=$(ping -c "$PING_COUNT" -W "$PING_TIMEOUT" "$target" 2>&1)
         echo "$ping_output" | tee -a "$LOG_FILE"
         
-        if echo "$ping_output" | grep -q "0% packet loss"; then
+        local packet_loss
+        packet_loss=$(echo "$ping_output" | grep -oP '\d+(?=% packet loss)' | head -1)
+        
+        if [ -z "$packet_loss" ]; then
+            log_result "Ping测试" "FAIL" "$target 无法解析结果" "$target"
+        elif [ "$packet_loss" -eq 0 ]; then
             local stats=$(echo "$ping_output" | tail -2)
-            log_result "Ping测试" "PASS" "$target 连通正常" "$target"
+            log_result "Ping测试" "PASS" "$target 连通正常 (丢包率: ${packet_loss}%)" "$target"
             echo -e "${CYAN}统计信息:${NC}"
             echo "$stats"
+        elif [ "$packet_loss" -eq 100 ]; then
+            log_result "Ping测试" "FAIL" "$target 完全无法连通 (丢包率: ${packet_loss}%)" "$target"
         else
-            log_result "Ping测试" "FAIL" "$target 无法连通" "$target"
+            local stats=$(echo "$ping_output" | tail -2)
+            log_result "Ping测试" "WARN" "$target 连通不稳定 (丢包率: ${packet_loss}%)" "$target"
+            echo -e "${CYAN}统计信息:${NC}"
+            echo "$stats"
         fi
         
         echo ""
@@ -577,13 +585,23 @@ test_network_performance() {
     perf_output=$(ping -c "$PERF_TEST_COUNT" -i "$PERF_TEST_INTERVAL" -W 1 "$perf_target" 2>&1)
     echo "$perf_output" | tee -a "$LOG_FILE"
     
-    if echo "$perf_output" | grep -q "0% packet loss"; then
+    local packet_loss
+    packet_loss=$(echo "$perf_output" | grep -oP '\d+(?=% packet loss)' | head -1)
+    
+    if [ -z "$packet_loss" ]; then
+        log_result "网络性能" "FAIL" "$perf_target 无法解析结果" "$perf_target"
+    elif [ "$packet_loss" -eq 0 ]; then
         local stats=$(echo "$perf_output" | tail -2)
-        log_result "网络性能" "PASS" "$perf_target 性能测试完成" "$perf_target"
+        log_result "网络性能" "PASS" "$perf_target 性能测试完成 (丢包率: ${packet_loss}%)" "$perf_target"
         echo -e "${CYAN}性能统计:${NC}"
         echo "$stats"
+    elif [ "$packet_loss" -eq 100 ]; then
+        log_result "网络性能" "FAIL" "$perf_target 完全无法连通 (丢包率: ${packet_loss}%)" "$perf_target"
     else
-        log_result "网络性能" "FAIL" "$perf_target 性能测试失败" "$perf_target"
+        local stats=$(echo "$perf_output" | tail -2)
+        log_result "网络性能" "WARN" "$perf_target 连通不稳定 (丢包率: ${packet_loss}%)" "$perf_target"
+        echo -e "${CYAN}性能统计:${NC}"
+        echo "$stats"
     fi
     
     echo ""
