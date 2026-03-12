@@ -64,6 +64,7 @@ TRACEROUTE_TIMEOUT=1
 PERF_TEST_COUNT=10
 PERF_TEST_INTERVAL=0.2
 CONFIG_FILE="$(dirname "$0")/network_test.conf"
+RESULT_FILE="/tmp/network_test_results_$$.tmp"
 
 # ============================
 # 辅助函数定义
@@ -112,8 +113,11 @@ record_test_result() {
     local message="$4"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     
-    # 存储测试结果
+    # 存储测试结果到数组
     TEST_RESULTS+=("$timestamp|$test_name|$target|$result|$message")
+    
+    # 同时写入结果文件（供并发使用）
+    echo "$timestamp|$test_name|$target|$result|$message" >> "$RESULT_FILE"
     
     # 更新统计
     TEST_SUMMARY["total"]=$((TEST_SUMMARY["total"] + 1))
@@ -877,7 +881,23 @@ cleanup() {
     rm -f /tmp/network_report_*.txt 2>/dev/null
     rm -f /tmp/network_summary_*.txt 2>/dev/null
     rm -f /tmp/curl_test_*.tmp 2>/dev/null
+    rm -f "$RESULT_FILE" 2>/dev/null
     log_info "清理完成"
+}
+
+# 从结果文件汇总结果（并发执行后调用）
+collect_results() {
+    if [ -f "$RESULT_FILE" ]; then
+        while IFS='|' read -r timestamp test_name target result message; do
+            TEST_RESULTS+=("$timestamp|$test_name|$target|$result|$message")
+            TEST_SUMMARY["total"]=$((TEST_SUMMARY["total"] + 1))
+            case "$result" in
+                "PASS") TEST_SUMMARY["passed"]=$((TEST_SUMMARY["passed"] + 1)) ;;
+                "FAIL") TEST_SUMMARY["failed"]=$((TEST_SUMMARY["failed"] + 1)) ;;
+                "WARN") TEST_SUMMARY["warned"]=$((TEST_SUMMARY["warned"] + 1)) ;;
+            esac
+        done < "$RESULT_FILE"
+    fi
 }
 
 # 主测试函数
@@ -900,13 +920,32 @@ run_tests() {
             print_banner
             check_commands
             get_system_info
-            test_dns
-            test_ping
-            test_http
-            test_https_detailed
-            test_traceroute
-            test_network_performance
-            test_port_connectivity
+            
+            # 初始化结果文件
+            > "$RESULT_FILE"
+            
+            # 并发执行各项测试
+            test_dns &
+            local pid_dns=$!
+            test_ping &
+            local pid_ping=$!
+            test_http &
+            local pid_http=$!
+            test_https_detailed &
+            local pid_https=$!
+            test_traceroute &
+            local pid_route=$!
+            test_network_performance &
+            local pid_perf=$!
+            test_port_connectivity &
+            local pid_port=$!
+            
+            # 等待所有测试完成
+            wait $pid_dns $pid_ping $pid_http $pid_https $pid_route $pid_perf $pid_port
+            
+            # 收集结果
+            collect_results
+            
             generate_summary_report
             ;;
         "ping")
@@ -974,6 +1013,10 @@ run_tests() {
 
 # 主函数
 main() {
+    # 记录开始时间
+    local start_time=$(date +%s)
+    local start_datetime=$(date '+%Y-%m-%d %H:%M:%S')
+    
     # 解析命令行参数
     parse_args "$@"
     
@@ -983,6 +1026,31 @@ main() {
     # 运行测试
     run_tests "$TEST_TYPE"
     local test_status=$?
+    
+    # 计算耗时
+    local end_time=$(date +%s)
+    local end_datetime=$(date '+%Y-%m-%d %H:%M:%S')
+    local duration=$((end_time - start_time))
+    local hours=$((duration / 3600))
+    local minutes=$(((duration % 3600) / 60))
+    local seconds=$((duration % 60))
+    
+    if [ $hours -gt 0 ]; then
+        local time_str="${hours}小时${minutes}分钟${seconds}秒"
+    elif [ $minutes -gt 0 ]; then
+        local time_str="${minutes}分钟${seconds}秒"
+    else
+        local time_str="${seconds}秒"
+    fi
+    
+    echo ""
+    echo -e "${BLUE}================================================${NC}"
+    echo -e "${BLUE}             执行时间统计${NC}"
+    echo -e "${BLUE}================================================${NC}"
+    echo -e "开始时间: ${GREEN}$start_datetime${NC}"
+    echo -e "结束时间: ${GREEN}$end_datetime${NC}"
+    echo -e "总 耗 时: ${PURPLE}$time_str${NC}"
+    echo ""
     
     # 清理
     cleanup
