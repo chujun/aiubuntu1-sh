@@ -473,9 +473,12 @@ test_ping() {
     for target in "${PING_TARGETS[@]}"; do
         log_info "测试Ping: $target"
         
-        if ping -c "$PING_COUNT" -W "$PING_TIMEOUT" "$target" 2>&1 | tee -a "$LOG_FILE"; then
-            # 提取统计信息
-            local stats=$(ping -c "$PING_COUNT" -W "$PING_TIMEOUT" "$target" 2>/dev/null | tail -2)
+        local ping_output
+        ping_output=$(ping -c "$PING_COUNT" -W "$PING_TIMEOUT" "$target" 2>&1)
+        echo "$ping_output" | tee -a "$LOG_FILE"
+        
+        if echo "$ping_output" | grep -q "0% packet loss"; then
+            local stats=$(echo "$ping_output" | tail -2)
             log_result "Ping测试" "PASS" "$target 连通正常" "$target"
             echo -e "${CYAN}统计信息:${NC}"
             echo "$stats"
@@ -564,16 +567,18 @@ test_traceroute() {
 test_network_performance() {
     log_info "开始网络性能测试..."
     
-    # 测试第一个Ping目标的性能
     local perf_target="${PING_TARGETS[0]}"
     
     if [ -z "$perf_target" ]; then
         perf_target="8.8.8.8"
     fi
     
-    if ping -c "$PERF_TEST_COUNT" -i "$PERF_TEST_INTERVAL" -W 1 "$perf_target" 2>&1 | tee -a "$LOG_FILE"; then
-        # 提取性能数据
-        local stats=$(ping -c "$PERF_TEST_COUNT" -i "$PERF_TEST_INTERVAL" -W 1 "$perf_target" 2>/dev/null | tail -2)
+    local perf_output
+    perf_output=$(ping -c "$PERF_TEST_COUNT" -i "$PERF_TEST_INTERVAL" -W 1 "$perf_target" 2>&1)
+    echo "$perf_output" | tee -a "$LOG_FILE"
+    
+    if echo "$perf_output" | grep -q "0% packet loss"; then
+        local stats=$(echo "$perf_output" | tail -2)
         log_result "网络性能" "PASS" "$perf_target 性能测试完成" "$perf_target"
         echo -e "${CYAN}性能统计:${NC}"
         echo "$stats"
