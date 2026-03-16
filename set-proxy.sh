@@ -83,21 +83,52 @@ get_host_ip() {
     echo -e "${YELLOW}[INFO]${NC} 默认网关 $_host_ip 不可达，尝试自动检测宿主机IP..."
     
     local vmnet_subnets=(
-        "10.1.32" "10.1.0" "10.0.0"
+        "10.1.35" "10.1.32" "10.1.0" "10.0.0"
         "192.168.40" "192.168.80" "192.168.50" 
         "192.168.126" "192.168.174" "192.168.1"
     )
     
+    local found_ip=""
+    local pids=()
+    
     for subnet in "${vmnet_subnets[@]}"; do
+        echo -e "${YELLOW}[INFO]${NC} 正在并行扫描网段: ${subnet}.x ..."
         for i in {1..254}; do
             local test_ip="${subnet}.$i"
-            if timeout 0.3 bash -c "echo >/dev/tcp/${test_ip}/${VPN_PROXY_PORT}" 2>/dev/null; then
-                echo -e "${GREEN}[INFO]${NC} 自动检测到宿主机IP: $test_ip"
-                echo "$test_ip"
-                return
+            (
+                if timeout 0.2 bash -c "echo >/dev/tcp/${test_ip}/${VPN_PROXY_PORT}" 2>/dev/null; then
+                    echo "$test_ip" > /tmp/proxy_found_ip
+                fi
+            ) &
+            pids+=($!)
+            
+            if [ ${#pids[@]} -ge 50 ]; then
+                for pid in "${pids[@]}"; do
+                    wait $pid 2>/dev/null
+                done
+                pids=()
+                if [ -f /tmp/proxy_found_ip ]; then
+                    found_ip=$(cat /tmp/proxy_found_ip)
+                    rm -f /tmp/proxy_found_ip
+                    echo -e "${GREEN}[INFO]${NC} 自动检测到宿主机IP: $found_ip"
+                    echo "$found_ip"
+                    return 0
+                fi
             fi
         done
     done
+    
+    for pid in "${pids[@]}"; do
+        wait $pid 2>/dev/null
+    done
+    
+    if [ -f /tmp/proxy_found_ip ]; then
+        found_ip=$(cat /tmp/proxy_found_ip)
+        rm -f /tmp/proxy_found_ip
+        echo -e "${GREEN}[INFO]${NC} 自动检测到宿主机IP: $found_ip"
+        echo "$found_ip"
+        return
+    fi
     
     echo -e "${RED}[ERROR]${NC} 无法自动检测宿主机IP，请手动指定: -i <IP>"
     return 1
