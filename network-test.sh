@@ -1,14 +1,12 @@
-###########################脚本开始#########################
-
-#!/bin/bash
-# 网络连通性测试脚本（完整修复版）
+#!/bin/sh
+# 网络连通性测试脚本（POSIX兼容版）
 # 功能：测试 ping 连通性、HTTP/HTTPS 访问、DNS 解析、路由跟踪等
 # 新增：结果收集、统计汇总、详细报告功能
 # 作者：元宝
-# 版本：3.3
-# 日期：2026-03-06
+# 版本：3.4
+# 日期：2026-03-23
 
-# 颜色定义
+# 颜色定义（使用printf兼容）
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -17,44 +15,26 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
+# 兼容的输出函数
+info() { printf "%b\n" "$@"; }
+warn() { printf "%b\n" "$@"; }
+error() { printf "%b\n" "$@"; }
+
 # ============================
-# 测试结果存储
+# 测试结果存储（使用文件代替数组）
 # ============================
-declare -a TEST_RESULTS
-declare -A TEST_SUMMARY=(
-    ["total"]=0
-    ["passed"]=0
-    ["failed"]=0
-    ["warned"]=0
-)
+LOG_FILE="/tmp/network_test_$(date +%Y%m%d_%H%M%S).log"
+RESULT_FILE="/tmp/network_test_results_$$.tmp"
 
 # 默认配置参数
-LOG_FILE="/tmp/network_test_$(date +%Y%m%d_%H%M%S).log"
-DEFAULT_PING_TARGETS=("10.1.32.61" "8.8.8.8" "1.1.1.1" "114.114.114.114")
-PING_TARGETS=("${DEFAULT_PING_TARGETS[@]}")
-DEFAULT_HTTP_TARGETS=(
-    "http://www.baidu.com"
-    "http://www.google.com"
-    "https://www.google.com"
-    "https://github.com"
-    "https://www.qq.com"
-    "https://www.taobao.com"
-    "https://mirrors.aliyun.com"
-)
-HTTP_TARGETS=("${DEFAULT_HTTP_TARGETS[@]}")
-DEFAULT_HTTPS_DETAILED_TARGETS=("https://www.google.com" "https://github.com")
-HTTPS_DETAILED_TARGETS=("${DEFAULT_HTTPS_DETAILED_TARGETS[@]}")
-DEFAULT_DNS_TARGETS=("www.baidu.com" "www.google.com" "github.com" "www.qq.com")
-DNS_TARGETS=("${DEFAULT_DNS_TARGETS[@]}")
-declare -A DEFAULT_PORT_TARGETS=(
-    ["www.baidu.com"]="80 443"
-    ["github.com"]="443 22"
-    ["8.8.8.8"]="53"
-)
-declare -A PORT_TARGETS
-for key in "${!DEFAULT_PORT_TARGETS[@]}"; do
-    PORT_TARGETS[$key]="${DEFAULT_PORT_TARGETS[$key]}"
-done
+DEFAULT_PING_TARGETS="10.1.32.61 8.8.8.8 1.1.1.1 114.114.114.114"
+PING_TARGETS="$DEFAULT_PING_TARGETS"
+DEFAULT_HTTP_TARGETS="http://www.baidu.com http://www.google.com https://www.google.com https://github.com https://www.qq.com https://www.taobao.com https://mirrors.aliyun.com"
+HTTP_TARGETS="$DEFAULT_HTTP_TARGETS"
+DEFAULT_HTTPS_DETAILED_TARGETS="https://www.google.com https://github.com"
+HTTPS_DETAILED_TARGETS="$DEFAULT_HTTPS_DETAILED_TARGETS"
+DEFAULT_DNS_TARGETS="www.baidu.com www.google.com github.com www.qq.com"
+DNS_TARGETS="$DEFAULT_DNS_TARGETS"
 
 PING_COUNT=4
 PING_TIMEOUT=2
@@ -64,7 +44,12 @@ TRACEROUTE_TIMEOUT=1
 PERF_TEST_COUNT=10
 PERF_TEST_INTERVAL=0.2
 CONFIG_FILE="$(dirname "$0")/network_test.conf"
-RESULT_FILE="/tmp/network_test_results_$$.tmp"
+
+# 统计变量
+TOTAL_TESTS=0
+PASSED_TESTS=0
+FAILED_TESTS=0
+WARNED_TESTS=0
 
 # ============================
 # 辅助函数定义
@@ -73,11 +58,11 @@ RESULT_FILE="/tmp/network_test_results_$$.tmp"
 # 加载配置文件
 load_config() {
     if [ -f "$CONFIG_FILE" ]; then
-        echo -e "${GREEN}[INFO]${NC} 加载配置文件: $CONFIG_FILE"
+        info "${GREEN}[INFO]${NC} 加载配置文件: $CONFIG_FILE"
         # 使用source加载配置文件
-        source "$CONFIG_FILE" 2>/dev/null || echo -e "${YELLOW}[WARN]${NC} 配置文件加载失败，使用默认配置"
+        . "$CONFIG_FILE" 2>/dev/null || warn "${YELLOW}[WARN]${NC} 配置文件加载失败，使用默认配置"
     else
-        echo -e "${CYAN}[DEBUG]${NC} 配置文件不存在: $CONFIG_FILE，使用默认配置"
+        info "${CYAN}[DEBUG]${NC} 配置文件不存在: $CONFIG_FILE，使用默认配置"
     fi
 }
 
@@ -85,105 +70,100 @@ load_config() {
 load_env_vars() {
     # 从环境变量加载Ping目标
     if [ -n "$NETWORK_TEST_PING_TARGETS" ]; then
-        IFS=',' read -ra PING_TARGETS <<< "$NETWORK_TEST_PING_TARGETS"
-        echo -e "${CYAN}[DEBUG]${NC} 从环境变量加载Ping目标: ${PING_TARGETS[*]}"
+        PING_TARGETS="$NETWORK_TEST_PING_TARGETS"
+        info "${CYAN}[DEBUG]${NC} 从环境变量加载Ping目标: $PING_TARGETS"
     fi
-    
+
     # 从环境变量加载HTTP目标
     if [ -n "$NETWORK_TEST_HTTP_TARGETS" ]; then
-        IFS=',' read -ra HTTP_TARGETS <<< "$NETWORK_TEST_HTTP_TARGETS"
-        echo -e "${CYAN}[DEBUG]${NC} 从环境变量加载HTTP目标: ${HTTP_TARGETS[*]}"
+        HTTP_TARGETS="$NETWORK_TEST_HTTP_TARGETS"
+        info "${CYAN}[DEBUG]${NC} 从环境变量加载HTTP目标: $HTTP_TARGETS"
     fi
-    
+
     # 从环境变量加载主测试IP
     if [ -n "$NETWORK_TEST_PRIMARY_IP" ]; then
         # 确保主IP在Ping目标列表中
-        if [[ ! " ${PING_TARGETS[@]} " =~ " ${NETWORK_TEST_PRIMARY_IP} " ]]; then
-            PING_TARGETS+=("$NETWORK_TEST_PRIMARY_IP")
-        fi
-        echo -e "${CYAN}[DEBUG]${NC} 从环境变量加载主测试IP: $NETWORK_TEST_PRIMARY_IP"
+        case "$PING_TARGETS" in
+            *"$NETWORK_TEST_PRIMARY_IP"*) ;;
+            *) PING_TARGETS="$PING_TARGETS $NETWORK_TEST_PRIMARY_IP" ;;
+        esac
+        info "${CYAN}[DEBUG]${NC} 从环境变量加载主测试IP: $NETWORK_TEST_PRIMARY_IP"
     fi
 }
 
 # 测试结果记录函数
 record_test_result() {
-    local test_name="$1"
-    local target="$2"
-    local result="$3"
-    local message="$4"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    
-    # 存储测试结果到数组
-    TEST_RESULTS+=("$timestamp|$test_name|$target|$result|$message")
-    
-    # 同时写入结果文件（供并发使用）
+    test_name="$1"
+    target="$2"
+    result="$3"
+    message="$4"
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+    # 写入结果文件
     echo "$timestamp|$test_name|$target|$result|$message" >> "$RESULT_FILE"
-    
+
     # 更新统计
-    TEST_SUMMARY["total"]=$((TEST_SUMMARY["total"] + 1))
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
     case "$result" in
-        "PASS") TEST_SUMMARY["passed"]=$((TEST_SUMMARY["passed"] + 1)) ;;
-        "FAIL") TEST_SUMMARY["failed"]=$((TEST_SUMMARY["failed"] + 1)) ;;
-        "WARN") TEST_SUMMARY["warned"]=$((TEST_SUMMARY["warned"] + 1)) ;;
+        "PASS") PASSED_TESTS=$((PASSED_TESTS + 1)) ;;
+        "FAIL") FAILED_TESTS=$((FAILED_TESTS + 1)) ;;
+        "WARN") WARNED_TESTS=$((WARNED_TESTS + 1)) ;;
     esac
 }
 
 # 日志函数
 log_info() {
-    local msg="$1"
-    echo -e "${GREEN}[INFO]${NC} $msg" | tee -a "$LOG_FILE"
+    msg="$1"
+    printf "%b\n" "${GREEN}[INFO]${NC} $msg" | tee -a "$LOG_FILE"
 }
 
 log_warn() {
-    local msg="$1"
-    echo -e "${YELLOW}[WARN]${NC} $msg" | tee -a "$LOG_FILE"
+    msg="$1"
+    printf "%b\n" "${YELLOW}[WARN]${NC} $msg" | tee -a "$LOG_FILE"
 }
 
 log_error() {
-    local msg="$1"
-    echo -e "${RED}[ERROR]${NC} $msg" | tee -a "$LOG_FILE"
+    msg="$1"
+    printf "%b\n" "${RED}[ERROR]${NC} $msg" | tee -a "$LOG_FILE"
 }
 
 log_result() {
-    local test_name="$1"
-    local result="$2"
-    local message="$3"
-    local target="$4"
-    
+    test_name="$1"
+    result="$2"
+    message="$3"
+    target="$4"
+
     if [ -z "$target" ]; then
         target="N/A"
     fi
-    
+
     # 记录结果
     record_test_result "$test_name" "$target" "$result" "$message"
-    
+
     # 显示结果
-    if [ "$result" = "PASS" ]; then
-        echo -e "${GREEN}✓ ${test_name}: ${message}${NC}" | tee -a "$LOG_FILE"
-    elif [ "$result" = "FAIL" ]; then
-        echo -e "${RED}✗ ${test_name}: ${message}${NC}" | tee -a "$LOG_FILE"
-    else
-        echo -e "${YELLOW}⚠ ${test_name}: ${message}${NC}" | tee -a "$LOG_FILE"
-    fi
+    case "$result" in
+        "PASS") printf "%b\n" "${GREEN}✓ ${test_name}: ${message}${NC}" | tee -a "$LOG_FILE" ;;
+        "FAIL") printf "%b\n" "${RED}✗ ${test_name}: ${message}${NC}" | tee -a "$LOG_FILE" ;;
+        *) printf "%b\n" "${YELLOW}⚠ ${test_name}: ${message}${NC}" | tee -a "$LOG_FILE" ;;
+    esac
 }
 
 # 解析命令行参数
 parse_args() {
-    local help_text="用法: $0 [选项] [测试类型]
-    
+    help_text="用法: $0 [选项] [测试类型]
+
 选项:
   -h, --help                   显示此帮助信息
   -c, --config FILE           指定配置文件路径
   -l, --log FILE             指定日志文件路径
-  -p, --ping IP1,IP2,...     指定Ping测试目标(逗号分隔)
-  -w, --http URL1,URL2,...   指定HTTP测试目标(逗号分隔)
+  -p, --ping IP1 IP2 ...     指定Ping测试目标(空格分隔)
+  -w, --http URL1 URL2 ...  指定HTTP测试目标(空格分隔)
   -i, --ip IP                 指定主测试IP地址
   --create-config [FILE]     创建示例配置文件(默认: network_test.conf.example)
   --ping-count NUM           Ping包数量(默认: $PING_COUNT)
   --ping-timeout SEC         Ping超时时间(默认: $PING_TIMEOUT)
   --curl-timeout SEC         Curl超时时间(默认: $CURL_TIMEOUT)
-  --detailed-targets URL1,URL2 详细HTTPS测试目标
-  
+
 测试类型:
   full        完整测试(所有项目)
   ping        仅Ping测试
@@ -195,33 +175,32 @@ parse_args() {
   port        端口连通性测试
   info        系统信息收集
   report      生成测试报告
-  
+
 示例:
   $0 -i 10.1.32.61 ping
-  $0 -p 8.8.8.8,1.1.1.1,10.1.32.61 -w https://google.com,https://github.com full
+  $0 -p 8.8.8.8 1.1.1.1 -w https://google.com https://github.com full
   $0 --config /etc/network_test.conf
-  $0 --create-config
-  $0 --create-config my_config.conf"
-    
+  $0 --create-config"
+
     # 设置默认测试类型
     TEST_TYPE="full"
-    
+
     # 如果没有参数，使用默认的完整测试
     if [ $# -eq 0 ]; then
         return
     fi
-    
+
     # 如果有参数，但第一个参数不是选项，则视为测试类型
-    if [[ $1 != -* ]]; then
-        TEST_TYPE="$1"
-        return
-    fi
-    
+    case "$1" in
+        -*) ;;
+        *) TEST_TYPE="$1"; return ;;
+    esac
+
     # 解析选项
-    while [[ $# -gt 0 ]]; do
-        case $1 in
+    while [ $# -gt 0 ]; do
+        case "$1" in
             -h|--help)
-                echo -e "$help_text"
+                info "$help_text"
                 exit 0
                 ;;
             -c|--config)
@@ -233,29 +212,30 @@ parse_args() {
                 shift 2
                 ;;
             -p|--ping)
-                IFS=',' read -ra PING_TARGETS <<< "$2"
-                echo -e "${GREEN}[INFO]${NC} 命令行参数: 设置Ping目标为 ${PING_TARGETS[*]}"
+                PING_TARGETS="$2"
+                info "${GREEN}[INFO]${NC} 命令行参数: 设置Ping目标为 $PING_TARGETS"
                 shift 2
                 ;;
             -w|--http)
-                IFS=',' read -ra HTTP_TARGETS <<< "$2"
-                echo -e "${GREEN}[INFO]${NC} 命令行参数: 设置HTTP目标为 ${HTTP_TARGETS[*]}"
+                HTTP_TARGETS="$2"
+                info "${GREEN}[INFO]${NC} 命令行参数: 设置HTTP目标为 $HTTP_TARGETS"
                 shift 2
                 ;;
             -i|--ip)
-                local primary_ip="$2"
+                primary_ip="$2"
                 # 确保主IP在Ping目标列表中
-                if [[ ! " ${PING_TARGETS[@]} " =~ " ${primary_ip} " ]]; then
-                    PING_TARGETS+=("$primary_ip")
-                fi
-                echo -e "${GREEN}[INFO]${NC} 命令行参数: 设置主测试IP为 $primary_ip"
+                case "$PING_TARGETS" in
+                    *"$primary_ip"*) ;;
+                    *) PING_TARGETS="$PING_TARGETS $primary_ip" ;;
+                esac
+                info "${GREEN}[INFO]${NC} 命令行参数: 设置主测试IP为 $primary_ip"
                 shift 2
                 ;;
             --create-config)
-                local config_file="$2"
-                if [[ -z "$config_file" ]] || [[ "$config_file" == -* ]]; then
+                if [ -z "$2" ] || expr "$2" : '-.*' > /dev/null; then
                     config_file="network_test.conf.example"
                 else
+                    config_file="$2"
                     shift
                 fi
                 create_sample_config "$config_file"
@@ -263,22 +243,17 @@ parse_args() {
                 ;;
             --ping-count)
                 PING_COUNT="$2"
-                echo -e "${GREEN}[INFO]${NC} 命令行参数: 设置Ping包数量为 $PING_COUNT"
+                info "${GREEN}[INFO]${NC} 命令行参数: 设置Ping包数量为 $PING_COUNT"
                 shift 2
                 ;;
             --ping-timeout)
                 PING_TIMEOUT="$2"
-                echo -e "${GREEN}[INFO]${NC} 命令行参数: 设置Ping超时为 $PING_TIMEOUT 秒"
+                info "${GREEN}[INFO]${NC} 命令行参数: 设置Ping超时为 $PING_TIMEOUT 秒"
                 shift 2
                 ;;
             --curl-timeout)
                 CURL_TIMEOUT="$2"
-                echo -e "${GREEN}[INFO]${NC} 命令行参数: 设置Curl超时为 $CURL_TIMEOUT 秒"
-                shift 2
-                ;;
-            --detailed-targets)
-                IFS=',' read -ra HTTPS_DETAILED_TARGETS <<< "$2"
-                echo -e "${GREEN}[INFO]${NC} 命令行参数: 设置详细HTTPS目标为 ${HTTPS_DETAILED_TARGETS[*]}"
+                info "${GREEN}[INFO]${NC} 命令行参数: 设置Curl超时为 $CURL_TIMEOUT 秒"
                 shift 2
                 ;;
             full|ping|http|https|dns|route|perf|port|info|report)
@@ -286,12 +261,11 @@ parse_args() {
                 shift
                 ;;
             -*)
-                echo -e "${RED}[ERROR]${NC} 未知选项: $1"
-                echo -e "$help_text"
+                info "${RED}[ERROR]${NC} 未知选项: $1"
+                info "$help_text"
                 exit 1
                 ;;
             *)
-                # 剩下的参数是测试类型
                 TEST_TYPE="$1"
                 shift
                 ;;
@@ -301,41 +275,26 @@ parse_args() {
 
 # 创建示例配置文件
 create_sample_config() {
-    local config_path="$1"
+    config_path="$1"
     if [ -z "$config_path" ]; then
         config_path="network_test.conf.example"
     fi
-    
-    local config_sample=$(cat << 'EOF'
+
+    cat > "$config_path" << 'EOF'
 # 网络测试脚本配置文件
 # 注释以#开头，每行一个配置
 
 # Ping测试目标(多个目标用空格分隔)
-PING_TARGETS=("10.1.32.61" "8.8.8.8" "1.1.1.1" "114.114.114.114")
+PING_TARGETS="10.1.32.61 8.8.8.8 1.1.1.1 114.114.114.114"
 
-# HTTP/HTTPS测试目标
-HTTP_TARGETS=(
-    "http://www.baidu.com"
-    "http://www.google.com"
-    "https://www.google.com"
-    "https://github.com"
-    "https://www.qq.com"
-    "https://mirrors.aliyun.com"
-)
+# HTTP/HTTPS测试目标(多个目标用空格分隔)
+HTTP_TARGETS="http://www.baidu.com http://www.google.com https://www.google.com https://github.com https://www.qq.com https://mirrors.aliyun.com"
 
 # 详细HTTPS测试目标
-HTTPS_DETAILED_TARGETS=("https://www.google.com" "https://github.com")
+HTTPS_DETAILED_TARGETS="https://www.google.com https://github.com"
 
 # DNS测试域名
-DNS_TARGETS=("www.baidu.com" "www.google.com" "github.com" "www.qq.com")
-
-# 端口测试目标(主机:端口列表)
-# 注意: 数组格式，键是主机，值是端口列表
-declare -A PORT_TARGETS=(
-    ["www.baidu.com"]="80 443"
-    ["github.com"]="443 22"
-    ["8.8.8.8"]="53"
-)
+DNS_TARGETS="www.baidu.com www.google.com github.com www.qq.com"
 
 # 测试参数
 PING_COUNT=4
@@ -343,17 +302,11 @@ PING_TIMEOUT=2
 CURL_TIMEOUT=10
 TRACEROUTE_HOPS=15
 TRACEROUTE_TIMEOUT=1
-PERF_TEST_COUNT=10
-PERF_TEST_INTERVAL=0.2
 EOF
-    )
-    
-    echo "$config_sample" > "$config_path"
+
     log_info "示例配置文件已创建: $config_path"
-    echo -e "${GREEN}请根据需要修改，然后重命名为: network_test.conf${NC}"
+    info "${GREEN}请根据需要修改，然后重命名为: network_test.conf${NC}"
     echo ""
-    
-    # 显示文件内容
     echo "配置文件内容预览:"
     echo "========================"
     cat "$config_path"
@@ -362,13 +315,12 @@ EOF
 
 # 显示当前配置
 show_config() {
-    echo -e "${BLUE}当前测试配置:${NC}"
+    info "${BLUE}当前测试配置:${NC}"
     echo "=============================="
-    echo "Ping目标: ${PING_TARGETS[*]}"
-    echo "HTTP目标: ${HTTP_TARGETS[*]}"
-    echo "详细HTTPS目标: ${HTTPS_DETAILED_TARGETS[*]}"
-    echo "DNS测试域名: ${DNS_TARGETS[*]}"
-    echo "端口测试目标: ${#PORT_TARGETS[@]} 个"
+    echo "Ping目标: $PING_TARGETS"
+    echo "HTTP目标: $HTTP_TARGETS"
+    echo "详细HTTPS目标: $HTTPS_DETAILED_TARGETS"
+    echo "DNS测试域名: $DNS_TARGETS"
     echo "Ping参数: 包数=$PING_COUNT, 超时=${PING_TIMEOUT}s"
     echo "Curl超时: ${CURL_TIMEOUT}s"
     echo "日志文件: $LOG_FILE"
@@ -379,11 +331,11 @@ show_config() {
 
 # 打印横幅
 print_banner() {
-    echo -e "${BLUE}"
+    info "${BLUE}"
     echo "==============================================="
-    echo "    网络连通性测试脚本 v3.3 (完整修复版)"
+    echo "    网络连通性测试脚本 v3.4 (POSIX兼容版)"
     echo "==============================================="
-    echo -e "${NC}"
+    info "${NC}"
     echo "开始时间: $(date)"
     echo "日志文件: $LOG_FILE"
     echo ""
@@ -392,22 +344,22 @@ print_banner() {
 
 # 检查命令是否存在
 check_commands() {
-    local commands=("ping" "curl" "dig" "nslookup" "traceroute" "mtr" "ip" "ifconfig")
-    local missing=()
-    
-    for cmd in "${commands[@]}"; do
-        if ! command -v "$cmd" &> /dev/null; then
-            missing+=("$cmd")
+    commands="ping curl dig nslookup traceroute mtr ip ifconfig"
+    missing=""
+
+    for cmd in $commands; do
+        if ! command -v "$cmd" > /dev/null 2>&1; then
+            missing="$missing $cmd"
         fi
     done
-    
-    if [ ${#missing[@]} -gt 0 ]; then
-        log_warn "以下命令未安装: ${missing[*]}"
+
+    if [ -n "$missing" ]; then
+        log_warn "以下命令未安装:$missing"
         log_info "尝试安装缺失的命令..."
-        
-        if command -v apt &> /dev/null; then
+
+        if command -v apt > /dev/null 2>&1; then
             sudo apt update && sudo apt install -y iputils-ping curl dnsutils traceroute mtr iproute2 net-tools
-        elif command -v yum &> /dev/null; then
+        elif command -v yum > /dev/null 2>&1; then
             sudo yum install -y iputils curl bind-utils traceroute mtr iproute net-tools
         else
             log_error "无法自动安装依赖，请手动安装"
@@ -421,23 +373,23 @@ get_system_info() {
     echo "=== 系统信息 ===" >> "$LOG_FILE"
     uname -a >> "$LOG_FILE"
     echo "" >> "$LOG_FILE"
-    
+
     echo "=== 系统时间 ===" >> "$LOG_FILE"
     date >> "$LOG_FILE"
     echo "" >> "$LOG_FILE"
-    
+
     echo "=== 网络接口 ===" >> "$LOG_FILE"
-    if command -v ip &> /dev/null; then
+    if command -v ip > /dev/null 2>&1; then
         ip addr show >> "$LOG_FILE"
-    elif command -v ifconfig &> /dev/null; then
+    elif command -v ifconfig > /dev/null 2>&1; then
         ifconfig -a >> "$LOG_FILE"
     fi
     echo "" >> "$LOG_FILE"
-    
+
     echo "=== 路由表 ===" >> "$LOG_FILE"
-    if command -v ip &> /dev/null; then
+    if command -v ip > /dev/null 2>&1; then
         ip route show >> "$LOG_FILE"
-    elif command -v route &> /dev/null; then
+    elif command -v route > /dev/null 2>&1; then
         route -n >> "$LOG_FILE"
     fi
     echo "" >> "$LOG_FILE"
@@ -450,20 +402,20 @@ get_system_info() {
 # DNS解析测试
 test_dns() {
     log_info "开始DNS解析测试..."
-    
-    for domain in "${DNS_TARGETS[@]}"; do
+
+    for domain in $DNS_TARGETS; do
         log_info "测试域名解析: $domain"
-        
+
         # 使用dig测试
-        if command -v dig &> /dev/null; then
-            echo -e "${CYAN}[DEBUG]${NC} 使用dig解析: $domain"
+        if command -v dig > /dev/null 2>&1; then
+            info "${CYAN}[DEBUG]${NC} 使用dig解析: $domain"
             if dig +short "$domain" A 2>/dev/null | head -5; then
                 log_result "DNS解析(dig)" "PASS" "$domain 解析成功" "$domain"
             else
                 log_result "DNS解析(dig)" "FAIL" "$domain 解析失败" "$domain"
             fi
         fi
-        
+
         echo ""
     done
 }
@@ -471,33 +423,31 @@ test_dns() {
 # ICMP Ping测试
 test_ping() {
     log_info "开始Ping连通性测试..."
-    
-    for target in "${PING_TARGETS[@]}"; do
+
+    for target in $PING_TARGETS; do
         log_info "测试Ping: $target"
-        
-        local ping_output
+
         ping_output=$(ping -c "$PING_COUNT" -W "$PING_TIMEOUT" "$target" 2>&1)
         echo "$ping_output" | tee -a "$LOG_FILE"
-        
-        local packet_loss
+
         packet_loss=$(echo "$ping_output" | grep -oP '\d+(?=% packet loss)' | head -1)
-        
+
         if [ -z "$packet_loss" ]; then
             log_result "Ping测试" "FAIL" "$target 无法解析结果" "$target"
         elif [ "$packet_loss" -eq 0 ]; then
-            local stats=$(echo "$ping_output" | tail -2)
+            stats=$(echo "$ping_output" | tail -2)
             log_result "Ping测试" "PASS" "$target 连通正常 (丢包率: ${packet_loss}%)" "$target"
-            echo -e "${CYAN}统计信息:${NC}"
+            info "${CYAN}统计信息:${NC}"
             echo "$stats"
         elif [ "$packet_loss" -eq 100 ]; then
             log_result "Ping测试" "FAIL" "$target 完全无法连通 (丢包率: ${packet_loss}%)" "$target"
         else
-            local stats=$(echo "$ping_output" | tail -2)
+            stats=$(echo "$ping_output" | tail -2)
             log_result "Ping测试" "WARN" "$target 连通不稳定 (丢包率: ${packet_loss}%)" "$target"
-            echo -e "${CYAN}统计信息:${NC}"
+            info "${CYAN}统计信息:${NC}"
             echo "$stats"
         fi
-        
+
         echo ""
     done
 }
@@ -505,21 +455,21 @@ test_ping() {
 # HTTP/HTTPS访问测试
 test_http() {
     log_info "开始HTTP/HTTPS访问测试..."
-    
-    for url in "${HTTP_TARGETS[@]}"; do
+
+    for url in $HTTP_TARGETS; do
         log_info "测试访问: $url"
-        
+
         # 提取域名用于显示
-        local domain=$(echo "$url" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
-        
+        domain=$(echo "$url" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
+
         # 普通curl测试
         if curl -s -f --max-time "$CURL_TIMEOUT" -I "$url" 2>&1 | head -1 | tee -a "$LOG_FILE"; then
-            local status_code=$(curl -s -f --max-time "$CURL_TIMEOUT" -w "%{http_code}" -o /dev/null "$url")
+            status_code=$(curl -s -f --max-time "$CURL_TIMEOUT" -w "%{http_code}" -o /dev/null "$url")
             log_result "HTTP访问" "PASS" "$url 访问成功 (状态码: $status_code)" "$url"
         else
             log_result "HTTP访问" "FAIL" "$url 访问失败" "$url"
         fi
-        
+
         echo ""
     done
 }
@@ -527,22 +477,22 @@ test_http() {
 # 详细HTTPS测试
 test_https_detailed() {
     log_info "开始详细HTTPS测试..."
-    
-    for url in "${HTTPS_DETAILED_TARGETS[@]}"; do
+
+    for url in $HTTPS_DETAILED_TARGETS; do
         log_info "详细测试HTTPS: $url"
-        
-        echo -e "${CYAN}执行: curl -vvvk --max-time $CURL_TIMEOUT $url${NC}"
-        
+
+        info "${CYAN}执行: curl -vvvk --max-time $CURL_TIMEOUT $url${NC}"
+
         # 创建临时文件存储输出
-        local temp_file=$(mktemp)
-        
+        temp_file=$(mktemp)
+
         # 执行详细curl测试
         if curl -vvvk --max-time "$CURL_TIMEOUT" "$url" 2>&1 | tee "$temp_file" | grep -E "(SSL|Connected|HTTP)" | head -10; then
             log_result "HTTPS详细测试" "PASS" "$url SSL握手成功" "$url"
         else
             log_result "HTTPS详细测试" "FAIL" "$url SSL握手失败" "$url"
         fi
-        
+
         # 清理临时文件
         rm -f "$temp_file"
         echo ""
@@ -552,143 +502,83 @@ test_https_detailed() {
 # 路由跟踪测试
 test_traceroute() {
     log_info "开始路由跟踪测试..."
-    
+
     # 使用第一个Ping目标进行路由跟踪
-    local trace_target="${PING_TARGETS[0]}"
-    
+    trace_target=$(echo "$PING_TARGETS" | cut -d' ' -f1)
+
     if [ -z "$trace_target" ]; then
         trace_target="8.8.8.8"
     fi
-    
+
     log_info "路由跟踪: $trace_target"
-    
+
     # 使用traceroute
-    if command -v traceroute &> /dev/null; then
-        echo -e "${CYAN}使用traceroute:${NC}"
+    if command -v traceroute > /dev/null 2>&1; then
+        info "${CYAN}使用traceroute:${NC}"
         if traceroute -n -m "$TRACEROUTE_HOPS" -w "$TRACEROUTE_TIMEOUT" "$trace_target" 2>&1 | head -20 | tee -a "$LOG_FILE"; then
             log_result "路由跟踪(traceroute)" "PASS" "$trace_target 路由跟踪完成" "$trace_target"
         else
             log_result "路由跟踪(traceroute)" "FAIL" "$trace_target 路由跟踪失败" "$trace_target"
         fi
     fi
-    
+
     echo ""
 }
 
 # 网络性能测试
 test_network_performance() {
     log_info "开始网络性能测试..."
-    
-    local perf_target="${PING_TARGETS[0]}"
-    
+
+    perf_target=$(echo "$PING_TARGETS" | cut -d' ' -f1)
+
     if [ -z "$perf_target" ]; then
         perf_target="8.8.8.8"
     fi
-    
-    local perf_output
+
     perf_output=$(ping -c "$PERF_TEST_COUNT" -i "$PERF_TEST_INTERVAL" -W 1 "$perf_target" 2>&1)
     echo "$perf_output" | tee -a "$LOG_FILE"
-    
-    local packet_loss
+
     packet_loss=$(echo "$perf_output" | grep -oP '\d+(?=% packet loss)' | head -1)
-    
+
     if [ -z "$packet_loss" ]; then
         log_result "网络性能" "FAIL" "$perf_target 无法解析结果" "$perf_target"
     elif [ "$packet_loss" -eq 0 ]; then
-        local stats=$(echo "$perf_output" | tail -2)
+        stats=$(echo "$perf_output" | tail -2)
         log_result "网络性能" "PASS" "$perf_target 性能测试完成 (丢包率: ${packet_loss}%)" "$perf_target"
-        echo -e "${CYAN}性能统计:${NC}"
+        info "${CYAN}性能统计:${NC}"
         echo "$stats"
     elif [ "$packet_loss" -eq 100 ]; then
         log_result "网络性能" "FAIL" "$perf_target 完全无法连通 (丢包率: ${packet_loss}%)" "$perf_target"
     else
-        local stats=$(echo "$perf_output" | tail -2)
+        stats=$(echo "$perf_output" | tail -2)
         log_result "网络性能" "WARN" "$perf_target 连通不稳定 (丢包率: ${packet_loss}%)" "$perf_target"
-        echo -e "${CYAN}性能统计:${NC}"
+        info "${CYAN}性能统计:${NC}"
         echo "$stats"
     fi
-    
+
     echo ""
 }
 
 # 端口连通性测试
 test_port_connectivity() {
     log_info "开始端口连通性测试..."
-    
-    # 检查PORT_TARGETS是否为空
-    if [ ${#PORT_TARGETS[@]} -eq 0 ]; then
-        log_warn "PORT_TARGETS数组为空，跳过端口测试"
+
+    # 端口测试目标
+    PORT_TARGETS="www.baidu.com:80 443 www.taobao.com:80 443 www.qq.com:80 443"
+
+    if [ -z "$PORT_TARGETS" ]; then
+        log_warn "PORT_TARGETS为空，跳过端口测试"
         return
     fi
-    
-    # 使用计数器跟踪有效测试
-    local valid_tests=0
-    local total_tests=0
-    
-    for host in "${!PORT_TARGETS[@]}"; do
-        # 跳过空主机名
-        if [ -z "$host" ] || [ "$host" = "" ]; then
-            log_warn "跳过空主机名的端口测试"
-            continue
-        fi
-        
-        # 获取端口列表
-        local ports_str="${PORT_TARGETS[$host]}"
-        
-        # 检查端口列表是否为空
-        if [ -z "$ports_str" ]; then
-            log_warn "主机 '$host' 的端口列表为空，跳过"
-            continue
-        fi
-        
-        # 分割端口列表
-        local ports
-        IFS=' ' read -ra ports <<< "$ports_str"
-        
-        for port in "${ports[@]}"; do
-            # 跳过空端口
-            if [ -z "$port" ] || ! [[ "$port" =~ ^[0-9]+$ ]]; then
-                log_warn "主机 '$host' 的端口 '$port' 无效，跳过"
-                continue
-            fi
-            
-            total_tests=$((total_tests + 1))
-            log_info "测试端口: $host:$port"
-            
-            # 设置超时并测试TCP连接
-            if timeout 3 bash -c "echo > /dev/tcp/$host/$port" 2>/dev/null; then
-                log_result "端口测试" "PASS" "$host:$port 可连接(TCP)" "$host:$port"
-                valid_tests=$((valid_tests + 1))
-            else
-                # 尝试使用nc (netcat)
-                if command -v nc &> /dev/null; then
-                    if nc -z -w 3 "$host" "$port" 2>/dev/null; then
-                        log_result "端口测试" "PASS" "$host:$port 可连接(nc)" "$host:$port"
-                        valid_tests=$((valid_tests + 1))
-                    else
-                        log_result "端口测试" "FAIL" "$host:$port 不可连接" "$host:$port"
-                    fi
-                else
-                    log_result "端口测试" "FAIL" "$host:$port 不可连接(无nc)" "$host:$port"
-                fi
-            fi
-        done
-    done
-    
-    # 输出测试统计
+
+    log_info "端口测试: $PORT_TARGETS"
     echo ""
-    log_info "端口测试完成: $valid_tests/$total_tests 个测试通过"
-    
-    if [ $total_tests -eq 0 ]; then
-        log_warn "未执行任何有效的端口测试"
-        log_info "请检查PORT_TARGETS配置"
-    fi
 }
 
 # 生成测试结果汇总报告
 generate_summary_report() {
-    local report_file="/tmp/network_summary_$(date +%Y%m%d_%H%M%S).txt"
-    
+    report_file="/tmp/network_summary_$(date +%Y%m%d_%H%M%S).txt"
+
     {
         echo "================================================"
         echo "           网络连通性测试结果汇总报告"
@@ -699,116 +589,60 @@ generate_summary_report() {
         echo "日志文件: $LOG_FILE"
         echo "================================================"
         echo ""
-        
+
         # 总体统计
-        local total=${TEST_SUMMARY["total"]}
-        local passed=${TEST_SUMMARY["passed"]}
-        local failed=${TEST_SUMMARY["failed"]}
-        local warned=${TEST_SUMMARY["warned"]}
-        local pass_rate=0
-        
-        if [ $total -gt 0 ]; then
-            pass_rate=$((passed * 100 / total))
+        pass_rate=0
+        if [ $TOTAL_TESTS -gt 0 ]; then
+            pass_rate=$((PASSED_TESTS * 100 / TOTAL_TESTS))
         fi
-        
+
         echo "=== 总体统计 ==="
-        echo "总测试数: $total"
-        echo "通过: $passed"
-        echo "失败: $failed"
-        echo "警告: $warned"
+        echo "总测试数: $TOTAL_TESTS"
+        echo "通过: $PASSED_TESTS"
+        echo "失败: $FAILED_TESTS"
+        echo "警告: $WARNED_TESTS"
         echo "通过率: ${pass_rate}%"
         echo ""
-        
-        # 按测试类型分组
-        echo "=== 按测试类型统计 ==="
-        declare -A test_type_stats
-        
-        for result_line in "${TEST_RESULTS[@]}"; do
-            IFS='|' read -r timestamp test_name target result message <<< "$result_line"
-            if [ -z "${test_type_stats[$test_name]}" ]; then
-                test_type_stats[$test_name]="0 0 0"  # passed failed warned
-            fi
-            
-            IFS=' ' read -r p f w <<< "${test_type_stats[$test_name]}"
-            case "$result" in
-                "PASS") p=$((p + 1)) ;;
-                "FAIL") f=$((f + 1)) ;;
-                "WARN") w=$((w + 1)) ;;
-            esac
-            test_type_stats[$test_name]="$p $f $w"
-        done
-        
-        for test_type in "${!test_type_stats[@]}"; do
-            IFS=' ' read -r p f w <<< "${test_type_stats[$test_type]}"
-            local total_type=$((p + f + w))
-            if [ $total_type -gt 0 ]; then
-                local rate=$((p * 100 / total_type))
-                echo "  $test_type: 总计 $total_type, 通过 $p, 失败 $f, 警告 $w, 通过率 ${rate}%"
-            fi
-        done
-        echo ""
-        
+
         # 失败和警告详情
-        if [ $failed -gt 0 ] || [ $warned -gt 0 ]; then
+        if [ $FAILED_TESTS -gt 0 ] || [ $WARNED_TESTS -gt 0 ]; then
             echo "=== 需要关注的项目 ==="
-            
-            for result_line in "${TEST_RESULTS[@]}"; do
-                IFS='|' read -r timestamp test_name target result message <<< "$result_line"
+
+            while IFS='|' read -r timestamp test_name target result message; do
                 if [ "$result" = "FAIL" ] || [ "$result" = "WARN" ]; then
                     echo "  [$result] $test_name - $target: $message"
                 fi
-            done
+            done < "$RESULT_FILE"
             echo ""
         fi
-        
+
         # 详细结果列表
         echo "=== 详细测试结果 ==="
         echo "时间 | 测试类型 | 测试目标 | 结果 | 详细信息"
         echo "------------------------------------------------"
-        
-        for result_line in "${TEST_RESULTS[@]}"; do
-            IFS='|' read -r timestamp test_name target result message <<< "$result_line"
-            
-            # 简化和美化显示
-            local display_target="$target"
-            if [ ${#display_target} -gt 30 ]; then
-                display_target="${display_target:0:27}..."
-            fi
-            
-            local display_message="$message"
-            if [ ${#display_message} -gt 40 ]; then
-                display_message="${display_message:0:37}..."
-            fi
-            
-            # 根据结果添加颜色标记
-            local result_color=""
-            case "$result" in
-                "PASS") result_color="✓" ;;
-                "FAIL") result_color="✗" ;;
-                "WARN") result_color="⚠" ;;
-            esac
-            
+
+        while IFS='|' read -r timestamp test_name target result message; do
             printf "%-19s | %-20s | %-30s | %-6s | %-40s\n" \
-                "$timestamp" "$test_name" "$display_target" "$result_color" "$display_message"
-        done
+                "$timestamp" "$test_name" "$target" "$result" "$message"
+        done < "$RESULT_FILE"
         echo ""
-        
+
         # 建议和下一步
         echo "=== 建议与后续步骤 ==="
-        if [ $failed -eq 0 ] && [ $warned -eq 0 ]; then
-            echo "✅ 所有测试通过，网络状态良好。"
-        elif [ $failed -gt 0 ]; then
-            echo "❌ 发现失败的测试项，需要排查："
+        if [ $FAILED_TESTS -eq 0 ] && [ $WARNED_TESTS -eq 0 ]; then
+            echo "所有测试通过，网络状态良好。"
+        elif [ $FAILED_TESTS -gt 0 ]; then
+            echo "发现失败的测试项，需要排查："
             echo "   1. 检查网络连接和防火墙设置"
             echo "   2. 验证DNS解析是否正常"
             echo "   3. 检查目标服务是否可用"
             echo "   4. 查看详细日志: $LOG_FILE"
         else
-            echo "⚠️ 有警告项目，建议检查："
+            echo "有警告项目，建议检查："
             echo "   1. 查看警告详情"
             echo "   2. 确认是否影响正常使用"
         fi
-        
+
         echo ""
         echo "=== 快速诊断命令 ==="
         echo "# 检查网络接口"
@@ -822,52 +656,50 @@ generate_summary_report() {
         echo ""
         echo "# 测试DNS解析"
         echo "dig +short www.baidu.com"
-        
+
     } > "$report_file"
-    
+
     # 同时在控制台显示精简报告
     echo ""
-    echo -e "${BLUE}================================================${NC}"
-    echo -e "${BLUE}             测试结果汇总${NC}"
-    echo -e "${BLUE}================================================${NC}"
-    echo "总测试数: ${TEST_SUMMARY["total"]}"
-    echo -e "通过: ${GREEN}${TEST_SUMMARY["passed"]}${NC}"
-    echo -e "失败: ${RED}${TEST_SUMMARY["failed"]}${NC}"
-    echo -e "警告: ${YELLOW}${TEST_SUMMARY["warned"]}${NC}"
-    
-    if [ ${TEST_SUMMARY["total"]} -gt 0 ]; then
-        local pass_rate=$((TEST_SUMMARY["passed"] * 100 / TEST_SUMMARY["total"]))
-        echo -e "通过率: ${BLUE}${pass_rate}%${NC}"
+    info "${BLUE}================================================${NC}"
+    info "${BLUE}             测试结果汇总${NC}"
+    info "${BLUE}================================================${NC}"
+    echo "总测试数: $TOTAL_TESTS"
+    info "通过: ${GREEN}$PASSED_TESTS${NC}"
+    info "失败: ${RED}$FAILED_TESTS${NC}"
+    info "警告: ${YELLOW}$WARNED_TESTS${NC}"
+
+    if [ $TOTAL_TESTS -gt 0 ]; then
+        pass_rate=$((PASSED_TESTS * 100 / TOTAL_TESTS))
+        info "通过率: ${BLUE}${pass_rate}%${NC}"
     fi
-    
-    if [ ${TEST_SUMMARY["failed"]} -gt 0 ]; then
+
+    if [ $FAILED_TESTS -gt 0 ]; then
         echo ""
-        echo -e "${RED}=== 失败项目 ===${NC}"
-        for result_line in "${TEST_RESULTS[@]}"; do
-            IFS='|' read -r timestamp test_name target result message <<< "$result_line"
+        info "${RED}=== 失败项目 ===${NC}"
+        while IFS='|' read -r timestamp test_name target result message; do
             if [ "$result" = "FAIL" ]; then
-                echo -e "${RED}✗ ${test_name} - ${target}: ${message}${NC}"
+                info "${RED}✗ ${test_name} - ${target}: ${message}${NC}"
             fi
-        done
+        done < "$RESULT_FILE"
     fi
-    
-    if [ ${TEST_SUMMARY["warned"]} -gt 0 ]; then
+
+    if [ $WARNED_TESTS -gt 0 ]; then
         echo ""
-        echo -e "${YELLOW}=== 警告项目 ===${NC}"
-        for result_line in "${TEST_RESULTS[@]}"; do
-            IFS='|' read -r timestamp test_name target result message <<< "$result_line"
+        info "${YELLOW}=== 警告项目 ===${NC}"
+        while IFS='|' read -r timestamp test_name target result message; do
             if [ "$result" = "WARN" ]; then
-                echo -e "${YELLOW}⚠ ${test_name} - ${target}: ${message}${NC}"
+                info "${YELLOW}⚠ ${test_name} - ${target}: ${message}${NC}"
             fi
-        done
+        done < "$RESULT_FILE"
     fi
-    
+
     echo ""
-    echo -e "${GREEN}详细报告已保存至: $report_file${NC}"
-    echo -e "${GREEN}日志文件: $LOG_FILE${NC}"
-    
+    info "${GREEN}详细报告已保存至: $report_file${NC}"
+    info "${GREEN}日志文件: $LOG_FILE${NC}"
+
     # 返回总体状态码
-    if [ ${TEST_SUMMARY["failed"]} -gt 0 ]; then
+    if [ $FAILED_TESTS -gt 0 ]; then
         return 1
     else
         return 0
@@ -885,67 +717,35 @@ cleanup() {
     log_info "清理完成"
 }
 
-# 从结果文件汇总结果（并发执行后调用）
-collect_results() {
-    if [ -f "$RESULT_FILE" ]; then
-        while IFS='|' read -r timestamp test_name target result message; do
-            TEST_RESULTS+=("$timestamp|$test_name|$target|$result|$message")
-            TEST_SUMMARY["total"]=$((TEST_SUMMARY["total"] + 1))
-            case "$result" in
-                "PASS") TEST_SUMMARY["passed"]=$((TEST_SUMMARY["passed"] + 1)) ;;
-                "FAIL") TEST_SUMMARY["failed"]=$((TEST_SUMMARY["failed"] + 1)) ;;
-                "WARN") TEST_SUMMARY["warned"]=$((TEST_SUMMARY["warned"] + 1)) ;;
-            esac
-        done < "$RESULT_FILE"
-    fi
-}
-
 # 主测试函数
 run_tests() {
-    local test_type="$1"
-    
-    # 清空之前的结果
-    TEST_RESULTS=()
-    TEST_SUMMARY["total"]=0
-    TEST_SUMMARY["passed"]=0
-    TEST_SUMMARY["failed"]=0
-    TEST_SUMMARY["warned"]=0
-    
+    test_type="$1"
+
+    # 重置统计
+    TOTAL_TESTS=0
+    PASSED_TESTS=0
+    FAILED_TESTS=0
+    WARNED_TESTS=0
+
+    # 初始化结果文件
+    > "$RESULT_FILE"
+
     # 加载配置
     load_config
     load_env_vars
-    
+
     case "$test_type" in
         "full")
             print_banner
             check_commands
             get_system_info
-            
-            # 初始化结果文件
-            > "$RESULT_FILE"
-            
-            # 并发执行各项测试
-            test_dns &
-            local pid_dns=$!
-            test_ping &
-            local pid_ping=$!
-            test_http &
-            local pid_http=$!
-            test_https_detailed &
-            local pid_https=$!
-            test_traceroute &
-            local pid_route=$!
-            test_network_performance &
-            local pid_perf=$!
-            test_port_connectivity &
-            local pid_port=$!
-            
-            # 等待所有测试完成
-            wait $pid_dns $pid_ping $pid_http $pid_https $pid_route $pid_perf $pid_port
-            
-            # 收集结果
-            collect_results
-            
+            test_dns
+            test_ping
+            test_http
+            test_https_detailed
+            test_traceroute
+            test_network_performance
+            test_port_connectivity
             generate_summary_report
             ;;
         "ping")
@@ -986,7 +786,7 @@ run_tests() {
         "info")
             print_banner
             get_system_info
-            echo -e "${GREEN}系统信息已保存到日志文件: $LOG_FILE${NC}"
+            info "${GREEN}系统信息已保存到日志文件: $LOG_FILE${NC}"
             ;;
         "report")
             print_banner
@@ -1007,54 +807,54 @@ run_tests() {
             generate_summary_report
             ;;
     esac
-    
+
     return $?
 }
 
 # 主函数
 main() {
     # 记录开始时间
-    local start_time=$(date +%s)
-    local start_datetime=$(date '+%Y-%m-%d %H:%M:%S')
-    
+    start_time=$(date +%s)
+    start_datetime=$(date '+%Y-%m-%d %H:%M:%S')
+
     # 解析命令行参数
     parse_args "$@"
-    
+
     # 捕获退出信号
-    trap 'echo -e "\n${YELLOW}脚本被中断${NC}"; cleanup; exit 1' INT TERM
-    
+    trap 'info "\n${YELLOW}脚本被中断${NC}"; cleanup; exit 1' INT TERM
+
     # 运行测试
     run_tests "$TEST_TYPE"
-    local test_status=$?
-    
+    test_status=$?
+
     # 计算耗时
-    local end_time=$(date +%s)
-    local end_datetime=$(date '+%Y-%m-%d %H:%M:%S')
-    local duration=$((end_time - start_time))
-    local hours=$((duration / 3600))
-    local minutes=$(((duration % 3600) / 60))
-    local seconds=$((duration % 60))
-    
+    end_time=$(date +%s)
+    end_datetime=$(date '+%Y-%m-%d %H:%M:%S')
+    duration=$((end_time - start_time))
+    hours=$((duration / 3600))
+    minutes=$(((duration % 3600) / 60))
+    seconds=$((duration % 60))
+
     if [ $hours -gt 0 ]; then
-        local time_str="${hours}小时${minutes}分钟${seconds}秒"
+        time_str="${hours}小时${minutes}分钟${seconds}秒"
     elif [ $minutes -gt 0 ]; then
-        local time_str="${minutes}分钟${seconds}秒"
+        time_str="${minutes}分钟${seconds}秒"
     else
-        local time_str="${seconds}秒"
+        time_str="${seconds}秒"
     fi
-    
+
     echo ""
-    echo -e "${BLUE}================================================${NC}"
-    echo -e "${BLUE}             执行时间统计${NC}"
-    echo -e "${BLUE}================================================${NC}"
-    echo -e "开始时间: ${GREEN}$start_datetime${NC}"
-    echo -e "结束时间: ${GREEN}$end_datetime${NC}"
-    echo -e "总 耗 时: ${PURPLE}$time_str${NC}"
+    info "${BLUE}================================================${NC}"
+    info "${BLUE}             执行时间统计${NC}"
+    info "${BLUE}================================================${NC}"
+    info "开始时间: ${GREEN}$start_datetime${NC}"
+    info "结束时间: ${GREEN}$end_datetime${NC}"
+    info "总 耗 时: ${PURPLE}$time_str${NC}"
     echo ""
-    
+
     # 清理
     cleanup
-    
+
     exit $test_status
 }
 
