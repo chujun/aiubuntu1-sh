@@ -579,6 +579,23 @@ test_port_connectivity() {
 generate_summary_report() {
     report_file="/tmp/network_summary_$(date +%Y%m%d_%H%M%S).txt"
 
+    # 从结果文件计算统计数据
+    TOTAL_TESTS=0
+    PASSED_TESTS=0
+    FAILED_TESTS=0
+    WARNED_TESTS=0
+
+    if [ -f "$RESULT_FILE" ]; then
+        while IFS='|' read -r timestamp test_name target result message; do
+            TOTAL_TESTS=$((TOTAL_TESTS + 1))
+            case "$result" in
+                "PASS") PASSED_TESTS=$((PASSED_TESTS + 1)) ;;
+                "FAIL") FAILED_TESTS=$((FAILED_TESTS + 1)) ;;
+                "WARN") WARNED_TESTS=$((WARNED_TESTS + 1)) ;;
+            esac
+        done < "$RESULT_FILE"
+    fi
+
     {
         echo "================================================"
         echo "           网络连通性测试结果汇总报告"
@@ -727,9 +744,6 @@ run_tests() {
     FAILED_TESTS=0
     WARNED_TESTS=0
 
-    # 初始化结果文件
-    > "$RESULT_FILE"
-
     # 加载配置
     load_config
     load_env_vars
@@ -739,13 +753,41 @@ run_tests() {
             print_banner
             check_commands
             get_system_info
-            test_dns
-            test_ping
-            test_http
-            test_https_detailed
-            test_traceroute
-            test_network_performance
-            test_port_connectivity
+
+            # 并行执行各项测试
+            DNS_RESULT_FILE="/tmp/network_dns_$$.tmp"
+            PING_RESULT_FILE="/tmp/network_ping_$$.tmp"
+            HTTP_RESULT_FILE="/tmp/network_http_$$.tmp"
+            HTTPS_RESULT_FILE="/tmp/network_https_$$.tmp"
+            ROUTE_RESULT_FILE="/tmp/network_route_$$.tmp"
+            PERF_RESULT_FILE="/tmp/network_perf_$$.tmp"
+            PORT_RESULT_FILE="/tmp/network_port_$$.tmp"
+
+            export RESULT_FILE="$DNS_RESULT_FILE"; test_dns &
+            DNS_PID=$!
+            export RESULT_FILE="$PING_RESULT_FILE"; test_ping &
+            PING_PID=$!
+            export RESULT_FILE="$HTTP_RESULT_FILE"; test_http &
+            HTTP_PID=$!
+            export RESULT_FILE="$HTTPS_RESULT_FILE"; test_https_detailed &
+            HTTPS_PID=$!
+            export RESULT_FILE="$ROUTE_RESULT_FILE"; test_traceroute &
+            ROUTE_PID=$!
+            export RESULT_FILE="$PERF_RESULT_FILE"; test_network_performance &
+            PERF_PID=$!
+            export RESULT_FILE="$PORT_RESULT_FILE"; test_port_connectivity &
+            PORT_PID=$!
+
+            # 等待所有测试完成
+            wait $DNS_PID $PING_PID $HTTP_PID $HTTPS_PID $ROUTE_PID $PERF_PID $PORT_PID
+
+            # 合并所有结果文件
+            RESULT_FILE="/tmp/network_test_results_$$.tmp"
+            cat "$DNS_RESULT_FILE" "$PING_RESULT_FILE" "$HTTP_RESULT_FILE" "$HTTPS_RESULT_FILE" "$ROUTE_RESULT_FILE" "$PERF_RESULT_FILE" "$PORT_RESULT_FILE" > "$RESULT_FILE" 2>/dev/null
+
+            # 清理临时文件
+            rm -f "$DNS_RESULT_FILE" "$PING_RESULT_FILE" "$HTTP_RESULT_FILE" "$HTTPS_RESULT_FILE" "$ROUTE_RESULT_FILE" "$PERF_RESULT_FILE" "$PORT_RESULT_FILE"
+
             generate_summary_report
             ;;
         "ping")
