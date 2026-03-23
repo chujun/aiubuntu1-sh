@@ -27,7 +27,7 @@ LOG_FILE="/tmp/network_test_$(date +%Y%m%d_%H%M%S).log"
 RESULT_FILE="/tmp/network_test_results_$$.tmp"
 
 # 默认配置参数
-DEFAULT_PING_TARGETS="10.1.32.61 8.8.8.8 1.1.1.1 114.114.114.114"
+DEFAULT_PING_TARGETS="8.8.8.8"
 PING_TARGETS="$DEFAULT_PING_TARGETS"
 DEFAULT_HTTP_TARGETS="http://www.baidu.com http://www.google.com https://www.google.com https://github.com https://www.qq.com https://www.taobao.com https://mirrors.aliyun.com"
 HTTP_TARGETS="$DEFAULT_HTTP_TARGETS"
