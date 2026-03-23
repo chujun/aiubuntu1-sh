@@ -67,24 +67,24 @@ show_usage() {
 
 get_host_ip() {
     local _host_ip
+  #直接暴力遍历得VPN端口号得了  
+  #  if [ -n "$HOST_IP" ]; then
+  #     echo "$HOST_IP"
+  #      return
+  #  fi
     
-    if [ -n "$HOST_IP" ]; then
-        echo "$HOST_IP"
-        return
-    fi
+  #  _host_ip=$(ip route show default 2>/dev/null | awk '/default/ {print $3}')
     
-    _host_ip=$(ip route show default 2>/dev/null | awk '/default/ {print $3}')
-    
-    if timeout 1 bash -c "echo >/dev/tcp/${_host_ip}/${VPN_PROXY_PORT}" 2>/dev/null; then
-        echo "$_host_ip"
-        return
-    fi
+  #  if timeout 1 bash -c "echo >/dev/tcp/${_host_ip}/${VPN_PROXY_PORT}" 2>/dev/null; then
+  #      echo "$_host_ip"
+  #      return
+  #  fi
     
     echo -e "${YELLOW}[INFO]${NC} 默认网关 $_host_ip 不可达，尝试自动检测宿主机IP..."
     
     local vmnet_subnets=(
         "10.1.35" "10.1.32" "10.1.0" "10.0.0"
-        "192.168.40" "192.168.80" "192.168.50" 
+        "192.168.31" "192.168.80" "192.168.50" 
         "192.168.126" "192.168.174" "192.168.1"
     )
     
