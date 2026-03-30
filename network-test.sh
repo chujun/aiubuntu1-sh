@@ -29,7 +29,7 @@ RESULT_FILE="/tmp/network_test_results_$$.tmp"
 # 默认配置参数
 DEFAULT_PING_TARGETS="8.8.8.8"
 PING_TARGETS="$DEFAULT_PING_TARGETS"
-DEFAULT_HTTP_TARGETS="http://www.baidu.com http://www.google.com https://www.google.com https://github.com https://www.qq.com https://www.taobao.com https://mirrors.aliyun.com"
+DEFAULT_HTTP_TARGETS="https://ipinfo.io/json http://www.baidu.com http://www.google.com https://www.google.com https://github.com https://www.qq.com https://www.taobao.com"
 HTTP_TARGETS="$DEFAULT_HTTP_TARGETS"
 DEFAULT_HTTPS_DETAILED_TARGETS="https://www.google.com https://github.com"
 HTTPS_DETAILED_TARGETS="$DEFAULT_HTTPS_DETAILED_TARGETS"
@@ -463,11 +463,21 @@ test_http() {
         domain=$(echo "$url" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
 
         # 普通curl测试
-        if curl -s -f --max-time "$CURL_TIMEOUT" -I "$url" 2>&1 | head -1 | tee -a "$LOG_FILE"; then
-            status_code=$(curl -s -f --max-time "$CURL_TIMEOUT" -w "%{http_code}" -o /dev/null "$url")
+        status_code=$(curl -s -f --max-time "$CURL_TIMEOUT" -w "%{http_code}" -o /dev/null "$url" 2>&1)
+        curl_result=$?
+
+        # 记录curl输出用于调试
+        curl -s -f --max-time "$CURL_TIMEOUT" -I "$url" 2>&1 | head -1 | tee -a "$LOG_FILE"
+
+        # 检查状态码是否为2xx（成功）
+        if [ $curl_result -eq 0 ] && [ "$status_code" -ge 200 ] && [ "$status_code" -lt 300 ]; then
             log_result "HTTP访问" "PASS" "$url 访问成功 (状态码: $status_code)" "$url"
+        elif [ $curl_result -ne 0 ] || [ "$status_code" -ge 400 ]; then
+            # curl失败或状态码为4xx/5xx都视为失败
+            log_result "HTTP访问" "FAIL" "$url 访问失败 (状态码: $status_code)" "$url"
         else
-            log_result "HTTP访问" "FAIL" "$url 访问失败" "$url"
+            # 3xx重定向等情况视为警告
+            log_result "HTTP访问" "WARN" "$url 重定向 (状态码: $status_code)" "$url"
         fi
 
         echo ""
