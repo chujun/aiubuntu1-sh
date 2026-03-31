@@ -29,7 +29,7 @@ RESULT_FILE="/tmp/network_test_results_$$.tmp"
 # 默认配置参数
 DEFAULT_PING_TARGETS="8.8.8.8"
 PING_TARGETS="$DEFAULT_PING_TARGETS"
-DEFAULT_HTTP_TARGETS="https://ipinfo.io/json http://www.baidu.com http://www.google.com https://www.google.com https://github.com https://www.qq.com https://www.taobao.com"
+DEFAULT_HTTP_TARGETS="https://ipinfo.io/json http://www.baidu.com http://www.google.com https://www.google.com https://github.com https://www.taobao.com"
 HTTP_TARGETS="$DEFAULT_HTTP_TARGETS"
 DEFAULT_HTTPS_DETAILED_TARGETS="https://www.google.com https://github.com"
 HTTPS_DETAILED_TARGETS="$DEFAULT_HTTPS_DETAILED_TARGETS"
