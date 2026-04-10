@@ -245,12 +245,15 @@ _write_token "openrouter" "sk-or-xyz"
 _write_token "minimax"    "mm-cn-key"
 _write_settings '{"theme":"dark","model":"old"}'
 
-# 切换到 Anthropic 官方模型
+# 切换到 Anthropic 官方模型（由 Claude Code 自身管理认证，不写入 token）
 cmd_switch "claude-sonnet" &>/dev/null
 content="$(cat "${SETTINGS_FILE}")"
-assert_contains "switch claude-sonnet 写入正确 model"       '"model": "claude-sonnet-4-6"'     "${content}"
-assert_contains "switch claude-sonnet 写入 API key"        '"ANTHROPIC_API_KEY": "sk-ant-abc"' "${content}"
-assert_contains "switch claude-sonnet 保留已有 theme 字段" '"theme": "dark"'                   "${content}"
+assert_contains "switch claude-sonnet 写入正确 model"         '"model": "claude-sonnet-4-6"'  "${content}"
+assert_eq "switch Anthropic 模型不写入 ANTHROPIC_API_KEY" \
+    "0" "$(grep -c 'ANTHROPIC_API_KEY' "${SETTINGS_FILE}")"
+assert_eq "switch Anthropic 模型不写入 ANTHROPIC_AUTH_TOKEN" \
+    "0" "$(grep -c 'ANTHROPIC_AUTH_TOKEN' "${SETTINGS_FILE}")"
+assert_contains "switch claude-sonnet 保留已有 theme 字段" '"theme": "dark"'               "${content}"
 assert_eq "switch Anthropic 模型不写入 BASE_URL" \
     "0" "$(grep -c 'ANTHROPIC_BASE_URL' "${SETTINGS_FILE}")"
 
@@ -265,11 +268,12 @@ cmd_switch "claude" &>/dev/null
 assert_eq "switch 回 claude 官方后移除 BASE_URL" \
     "0" "$(grep -c 'ANTHROPIC_BASE_URL' "${SETTINGS_FILE}")"
 
-# 切换到 MiniMax 国内端点
+# 切换到 MiniMax 国内端点（Anthropic 兼容端点）
 cmd_switch "minimax-cn" &>/dev/null
 content="$(cat "${SETTINGS_FILE}")"
-assert_contains "switch minimax-cn BASE_URL 指向国内端点" 'minimax.chat'    "${content}"
-assert_contains "switch minimax-cn 写入正确 model id"    'MiniMax-Text-01' "${content}"
+assert_contains "switch minimax-cn BASE_URL 指向 minimaxi 端点"  'api.minimaxi.com'  "${content}"
+assert_contains "switch minimax-cn 使用 ANTHROPIC_AUTH_TOKEN"      'ANTHROPIC_AUTH_TOKEN' "${content}"
+assert_contains "switch minimax-cn 写入正确 model id"              'MiniMax-M2.7-highspeed' "${content}"
 
 # switch 写入前自动备份（快速连续调用时间戳可能相同，只验证备份目录非空）
 bak_count=$(ls "${BACKUP_DIR}/settings.json.bak."* 2>/dev/null | wc -l | tr -d ' ')

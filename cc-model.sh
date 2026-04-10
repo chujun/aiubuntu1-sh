@@ -45,13 +45,18 @@ declare -A MODEL_ID=(
     [gemini]="google/gemini-2.5-pro-preview-03-25"
     [glm]="thudm/glm-4-32b"
     [minimax-m2.7]="minimax/minimax-m2"
-    [minimax-cn]="MiniMax-Text-01"
+    [minimax-cn]="MiniMax-M2.7-highspeed"
 )
 
 declare -A PROVIDER_BASE_URL=(
     [anthropic]=""                                   # 空 = 官方，不写入 settings
     [openrouter]="https://openrouter.ai/api/v1"      # OpenRouter 兼容 Anthropic SDK
-    [minimax]="https://api.minimax.chat/v1"          # MiniMax 国内直连端点
+    [minimax]="https://api.minimaxi.com/anthropic"   # MiniMax 国内 Anthropic 兼容端点
+)
+
+# 需要使用 ANTHROPIC_AUTH_TOKEN（而非 ANTHROPIC_API_KEY）的 provider
+declare -A PROVIDER_AUTH_TOKEN_KEY=(
+    [minimax]="ANTHROPIC_AUTH_TOKEN"
 )
 
 # ────────────── 工具 ──────────────
@@ -220,6 +225,9 @@ cmd_switch() {
         token=$(get_token "${provider}")
     fi
 
+    # 确定 token 环境变量名（minimax 使用 ANTHROPIC_AUTH_TOKEN）
+    local token_env_key="${PROVIDER_AUTH_TOKEN_KEY["${provider}"]:-ANTHROPIC_API_KEY}"
+
     # 合并 settings.json
     local current_settings
     current_settings=$(read_settings)
@@ -235,16 +243,19 @@ current['model'] = '${model_id}'
 
 # 更新 env 块（保留其他 env 项）
 env = current.get('env', {})
+
+# 清理所有可能的 token key，避免残留
+for k in ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN']:
+    env.pop(k, None)
+
 if '${token}':
-    env['ANTHROPIC_API_KEY'] = '${token}'
-else:
-    # 切回 anthropic 官方时移除 API key（由 Claude Code 自身认证）
-    env.pop('ANTHROPIC_API_KEY', None)
+    env['${token_env_key}'] = '${token}'
+
 if '${base_url}':
     env['ANTHROPIC_BASE_URL'] = '${base_url}'
 else:
-    # 切回 Claude 官方时移除自定义 base_url
     env.pop('ANTHROPIC_BASE_URL', None)
+
 if env:
     current['env'] = env
 elif 'env' in current:
@@ -273,15 +284,22 @@ cmd_run() {
         token=$(get_token "${provider}")
     fi
 
+    # 确定 token 环境变量名（minimax 使用 ANTHROPIC_AUTH_TOKEN）
+    local token_env_key="${PROVIDER_AUTH_TOKEN_KEY["${provider}"]:-ANTHROPIC_API_KEY}"
+
     info "临时使用模型: ${model} (${model_id})"
 
+    # 构建环境变量
+    local -a env_vars=()
+    if [[ -n "${token}" ]]; then
+        env_vars+=("${token_env_key}=${token}")
+    fi
     if [[ -n "${base_url}" ]]; then
-        ANTHROPIC_API_KEY="${token}" \
-        ANTHROPIC_BASE_URL="${base_url}" \
-        exec claude --model "${model_id}" "$@"
-    elif [[ -n "${token}" ]]; then
-        ANTHROPIC_API_KEY="${token}" \
-        exec claude --model "${model_id}" "$@"
+        env_vars+=("ANTHROPIC_BASE_URL=${base_url}")
+    fi
+
+    if [[ ${#env_vars[@]} -gt 0 ]]; then
+        exec env "${env_vars[@]}" claude --model "${model_id}" "$@"
     else
         exec claude --model "${model_id}" "$@"
     fi
@@ -354,8 +372,9 @@ cmd_list() {
     echo "OpenRouter 支持 claude/chatgpt/gemini/glm/minimax，一个 key 全搞定"
     echo "注册: https://openrouter.ai"
     echo ""
-    echo "MiniMax 国内直连:"
+    echo "MiniMax 国内直连（Anthropic 兼容端点）:"
     echo "  minimax-cn  → cc-model token set minimax <MINIMAX_API_KEY>"
+    echo "  使用 ANTHROPIC_AUTH_TOKEN 认证，Base URL: https://api.minimaxi.com/anthropic"
     echo "注册: https://platform.minimaxi.com"
 }
 
