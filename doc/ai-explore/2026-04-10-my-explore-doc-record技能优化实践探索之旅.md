@@ -163,11 +163,11 @@ flowchart TD
 ```mermaid
 flowchart LR
     subgraph "Phase 4 中的错误逻辑"
-        R["re.replace(/\n/g, '<br/>')<br/>对整个 Mermaid 代码块执行"]
+        R["re.replace 错误<br/>将换行符替换为 <br/>"]
     end
     subgraph "后果"
         E1["graph TD<br/>  A[text] --> B[text]"]
-        E2["pie title Test<br/>  \"a\" : 1<br/>  \"b\" : 2"]
+        E2["pie title 语法错误"]
     end
     subgraph "Mermaid 解析失败"
         F["Syntax Error in text"]
@@ -226,12 +226,12 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A["提取所有 ```mermaid\n...\n``` 代码块"] --> B{每个代码块检查}
-    B --> C1["<br/> 在语法关键字行?"]
+    A["提取 Mermaid 代码块"] --> B{每个代码块检查}
+    B --> C1["<br/> 在关键字行?"]
     C1 -->|是| E["❌ 报错"]
     C1 -->|否| C2["关键字行无后续内容?"]
     C2 -->|是| E
-    C2 -->|否| C3["关键字与节点写在同一行?<br/>graph TDA[...]?"]
+    C2 -->|否| C3["关键字与节点写在同一行?"]
     C3 -->|是| E
     C3 -->|否| F["✅ 语法正确"]
     E --> B
