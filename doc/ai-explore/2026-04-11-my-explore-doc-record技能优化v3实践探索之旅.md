@@ -6,7 +6,7 @@
 > **会话 ID：** `-data-ai-claudecode-claude-code-plan-demo`
 > **项目路径：** `/data/ai/claudecode/claude-code-plan-demo`
 > **GitHub 地址：** https://github.com/chujun/claude-code-plan-demo
-> **本文档链接：** https://github.com/chujun/aiubuntu1-sh/blob/main/doc/ai-explore/2026-04-11-my-explore-doc-record技能优化v3实践探索之旅.md
+> **本文档链接：** https://github.com/chujun/aiubuntu1-sh/blob/main/doc/ai-explore/2026-04-11-my-explore-doc-record%E6%8A%80%E8%83%BD%E4%BC%98%E5%8C%96v3%E5%AE%9E%E8%B7%B5%E6%8E%A2%E7%B4%A2%E4%B9%8B%E6%97%85.md
 
 ---
 
