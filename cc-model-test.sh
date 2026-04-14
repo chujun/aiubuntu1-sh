@@ -261,7 +261,7 @@ assert_eq "switch Anthropic 模型不写入 BASE_URL" \
 cmd_switch "openrouter-gemini-pro" &>/dev/null
 content="$(cat "${SETTINGS_FILE}")"
 assert_contains "switch openrouter-gemini-pro 写入 ANTHROPIC_BASE_URL 键" '"ANTHROPIC_BASE_URL"' "${content}"
-assert_contains "switch openrouter-gemini-pro BASE_URL 指向 openrouter"   'openrouter.ai'       "${content}"
+assert_contains "switch openrouter-gemini-pro BASE_URL 指向 openrouter"   'openrouter.ai'   "${content}"
 
 # 切回官方 Claude，BASE_URL 应被移除
 cmd_switch "claude" &>/dev/null
