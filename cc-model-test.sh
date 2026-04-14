@@ -128,7 +128,7 @@ _write_settings() {
 section "validate_model"
 _setup
 
-for m in claude claude-opus claude-sonnet claude-haiku chatgpt gemini glm minimax-m2.7 minimax-cn; do
+for m in claude claude-opus claude-sonnet claude-haiku openrouter-sonnet openrouter-gpt-4o openrouter-gemini-pro openrouter-glm-4-32b openrouter-minimax-m2 minimax-m2; do
     assert_exit_ok "合法别名 '${m}' 通过验证" validate_model "${m}"
 done
 assert_exit_fail "非法别名 'gpt5' 报错"             validate_model "gpt5"
@@ -258,10 +258,10 @@ assert_eq "switch Anthropic 模型不写入 BASE_URL" \
     "0" "$(grep -c 'ANTHROPIC_BASE_URL' "${SETTINGS_FILE}")"
 
 # 切换到 OpenRouter 模型，应写入 BASE_URL
-cmd_switch "gemini" &>/dev/null
+cmd_switch "openrouter-gemini-pro" &>/dev/null
 content="$(cat "${SETTINGS_FILE}")"
-assert_contains "switch gemini 写入 ANTHROPIC_BASE_URL 键" '"ANTHROPIC_BASE_URL"' "${content}"
-assert_contains "switch gemini BASE_URL 指向 openrouter"   'openrouter.ai'       "${content}"
+assert_contains "switch openrouter-gemini-pro 写入 ANTHROPIC_BASE_URL 键" '"ANTHROPIC_BASE_URL"' "${content}"
+assert_contains "switch openrouter-gemini-pro BASE_URL 指向 openrouter"   'openrouter.ai'       "${content}"
 
 # 切回官方 Claude，BASE_URL 应被移除
 cmd_switch "claude" &>/dev/null
@@ -269,11 +269,11 @@ assert_eq "switch 回 claude 官方后移除 BASE_URL" \
     "0" "$(grep -c 'ANTHROPIC_BASE_URL' "${SETTINGS_FILE}")"
 
 # 切换到 MiniMax 国内端点（Anthropic 兼容端点）
-cmd_switch "minimax-cn" &>/dev/null
+cmd_switch "minimax-m2" &>/dev/null
 content="$(cat "${SETTINGS_FILE}")"
-assert_contains "switch minimax-cn BASE_URL 指向 minimaxi 端点"  'api.minimaxi.com'  "${content}"
-assert_contains "switch minimax-cn 使用 ANTHROPIC_AUTH_TOKEN"      'ANTHROPIC_AUTH_TOKEN' "${content}"
-assert_contains "switch minimax-cn 写入正确 model id"              'MiniMax-M2.7-highspeed' "${content}"
+assert_contains "switch minimax-m2 BASE_URL 指向 minimaxi 端点"  'api.minimaxi.com'  "${content}"
+assert_contains "switch minimax-m2 使用 ANTHROPIC_AUTH_TOKEN"      'ANTHROPIC_AUTH_TOKEN' "${content}"
+assert_contains "switch minimax-m2 写入正确 model id"              'MiniMax-M2.7-highspeed' "${content}"
 
 # switch 写入前自动备份（快速连续调用时间戳可能相同，只验证备份目录非空）
 bak_count=$(ls "${BACKUP_DIR}/settings.json.bak."* 2>/dev/null | wc -l | tr -d ' ')
@@ -375,6 +375,194 @@ cmd_token del "openrouter" &>/dev/null
 assert_exit_fail "token del 后 get_token openrouter 应报错" get_token "openrouter"
 assert_eq "token del 后 anthropic 仍存在" \
     "sk-ant-updated" "$(get_token anthropic)"
+
+_teardown
+
+# ════════════════════════════════════════
+#  9. provider_get 函数
+# ════════════════════════════════════════
+section "provider_get"
+
+# 内置供应商字段解析
+_setup
+
+# anthropic 官方
+assert_eq "anthropic base_url 为空（官方端点）" "" "$(provider_get anthropic base_url)"
+assert_eq "anthropic auth_key 为空" "" "$(provider_get anthropic auth_key)"
+assert_eq "anthropic token_required 为 false" "false" "$(provider_get anthropic token_required)"
+assert_eq "anthropic is_official 为 true" "true" "$(provider_get anthropic is_official)"
+
+# openrouter
+assert_eq "openrouter base_url 正确" "https://openrouter.ai/api/v1" "$(provider_get openrouter base_url)"
+assert_eq "openrouter auth_key 为 ANTHROPIC_API_KEY" "ANTHROPIC_API_KEY" "$(provider_get openrouter auth_key)"
+assert_eq "openrouter token_required 为 true" "true" "$(provider_get openrouter token_required)"
+assert_eq "openrouter is_official 为 false" "false" "$(provider_get openrouter is_official)"
+
+# minimax
+assert_eq "minimax base_url 正确" "https://api.minimaxi.com/anthropic" "$(provider_get minimax base_url)"
+assert_eq "minimax auth_key 为 ANTHROPIC_AUTH_TOKEN" "ANTHROPIC_AUTH_TOKEN" "$(provider_get minimax auth_key)"
+assert_eq "minimax token_required 为 true" "true" "$(provider_get minimax token_required)"
+
+# 不存在的供应商
+assert_exit_fail "不存在的 provider 报错" provider_get "no_such_provider" base_url
+
+_teardown
+
+# ════════════════════════════════════════
+#  10. model_get 函数
+# ════════════════════════════════════════
+section "model_get"
+
+_setup
+
+# 官方模型
+assert_eq "claude provider 为 anthropic" "anthropic" "$(model_get claude provider)"
+assert_eq "claude model_id 正确" "claude-opus-4-6" "$(model_get claude model_id)"
+assert_contains "claude desc 包含 Opus" "Opus" "$(model_get claude desc)"
+
+# OpenRouter 模型
+assert_eq "openrouter-gemini-pro provider 为 openrouter" "openrouter" "$(model_get openrouter-gemini-pro provider)"
+assert_eq "openrouter-gemini-pro model_id 正确" "google/gemini-2.5-pro-preview-03-25" "$(model_get openrouter-gemini-pro model_id)"
+
+# 通过 OpenRouter 的 Claude 模型
+assert_eq "openrouter-sonnet provider 为 openrouter" "openrouter" "$(model_get openrouter-sonnet provider)"
+assert_eq "openrouter-sonnet model_id 为 anthropic/claude-sonnet-4-6" "anthropic/claude-sonnet-4-6" "$(model_get openrouter-sonnet model_id)"
+assert_eq "openrouter-haiku model_id 正确" "anthropic/claude-haiku-4-5-20251001" "$(model_get openrouter-haiku model_id)"
+
+# MiniMax 国内直连
+assert_eq "minimax-m2 provider 为 minimax" "minimax" "$(model_get minimax-m2 provider)"
+assert_eq "minimax-m2 model_id 正确" "MiniMax-M2.7-highspeed" "$(model_get minimax-m2 model_id)"
+
+# 不存在的模型
+assert_exit_fail "不存在的模型报错" model_get "nonexistent_model" provider
+
+_teardown
+
+# ════════════════════════════════════════
+#  11. cmd_provider 管理命令
+# ════════════════════════════════════════
+section "cmd_provider"
+
+# ── 11a: provider list ──
+_setup
+list_out="$(cmd_provider list 2>&1)"
+assert_contains "provider list 显示 anthropic" "anthropic" "${list_out}"
+assert_contains "provider list 显示 openrouter" "openrouter" "${list_out}"
+assert_contains "provider list 显示 minimax" "minimax" "${list_out}"
+assert_contains "provider list 显示官方标识" "官方" "${list_out}"
+_teardown
+
+# ── 11b: provider add 自定义供应商 ──
+_setup
+cmd_provider add "azure" "https://xxx.openai.azure.com" "ANTHROPIC_API_KEY" &>/dev/null
+assert_file_exists "provider add 创建 provider 文件" "${PROVIDER_FILE}"
+assert_contains "provider add 内容正确" "azure" "$(cat "${PROVIDER_FILE}")"
+assert_contains "provider add base_url 正确" "xxx.openai.azure.com" "$(cat "${PROVIDER_FILE}")"
+
+# 重复添加应覆盖
+cmd_provider add "azure" "https://yyy.openai.azure.com" &>/dev/null
+line_count=$(grep -c "^azure=" "${PROVIDER_FILE}")
+assert_eq "provider add 重复添加覆盖而非重复" "1" "${line_count}"
+_teardown
+
+# ── 11c: provider add 内置供应商应报错 ──
+_setup
+assert_exit_fail "provider add 内置供应商（anthropic）报错" cmd_provider add "anthropic" "http://test"
+_teardown
+
+# ── 11d: provider del 自定义供应商 ──
+_setup
+cmd_provider add "testprov" "http://test.com" &>/dev/null
+cmd_provider del "testprov" &>/dev/null
+assert_eq "provider del 删除成功" "" "$(grep "^testprov=" "${PROVIDER_FILE}" 2>/dev/null || echo "")"
+_teardown
+
+# ── 11e: provider del 内置供应商应报错 ──
+_setup
+assert_exit_fail "provider del 内置供应商（openrouter）报错" cmd_provider del "openrouter"
+_teardown
+
+# ════════════════════════════════════════
+#  12. 新模型别名测试
+# ════════════════════════════════════════
+section "新模型别名验证"
+
+_setup
+
+# 通过 OpenRouter 的 Claude 模型应通过验证
+assert_exit_ok "openrouter-sonnet 通过验证" validate_model "openrouter-sonnet"
+assert_exit_ok "openrouter-haiku 通过验证" validate_model "openrouter-haiku"
+
+# 其他新增模型
+assert_exit_ok "openrouter-gpt-4o-mini 通过验证" validate_model "openrouter-gpt-4o-mini"
+assert_exit_ok "openrouter-yi-large 通过验证" validate_model "openrouter-yi-large"
+
+_teardown
+
+# ════════════════════════════════════════
+#  13. cmd_switch 官方供应商无需 token
+# ════════════════════════════════════════
+section "cmd_switch 官方供应商"
+
+_setup
+
+# anthropic 官方供应商不需要 token
+_write_settings '{"model":"old"}'
+
+# 故意不设置 anthropic token，切换应该成功
+cmd_switch "claude" &>/dev/null
+content="$(cat "${SETTINGS_FILE}")"
+assert_contains "switch 官方 claude 成功" "claude-opus-4-6" "${content}"
+assert_eq "switch 官方 claude 不写入 API_KEY" "0" "$(grep -c 'ANTHROPIC_API_KEY' "${SETTINGS_FILE}")"
+assert_eq "switch 官方 claude 不写入 AUTH_TOKEN" "0" "$(grep -c 'ANTHROPIC_AUTH_TOKEN' "${SETTINGS_FILE}")"
+assert_eq "switch 官方 claude 不写入 BASE_URL" "0" "$(grep -c 'ANTHROPIC_BASE_URL' "${SETTINGS_FILE}")"
+
+# claude-haiku 也应该一样
+cmd_switch "claude-haiku" &>/dev/null
+assert_eq "switch claude-haiku 不写入 token" "0" "$(grep -c 'ANTHROPIC' "${SETTINGS_FILE}")"
+
+_teardown
+
+# ════════════════════════════════════════
+#  14. cmd_switch openrouter-sonnet
+# ════════════════════════════════════════
+section "cmd_switch openrouter-sonnet"
+
+_setup
+
+_write_token "openrouter" "sk-or-claude-access"
+_write_settings '{"model":"old"}'
+
+# 通过 OpenRouter 使用 Claude Sonnet
+cmd_switch "openrouter-sonnet" &>/dev/null
+content="$(cat "${SETTINGS_FILE}")"
+assert_contains "openrouter-sonnet model_id 为 anthropic/claude-sonnet-4-6" "anthropic/claude-sonnet-4-6" "${content}"
+assert_contains "openrouter-sonnet 使用 openrouter BASE_URL" "openrouter.ai" "${content}"
+assert_contains "openrouter-sonnet 写入 ANTHROPIC_API_KEY" "ANTHROPIC_API_KEY" "${content}"
+
+# openrouter-haiku
+cmd_switch "openrouter-haiku" &>/dev/null
+content="$(cat "${SETTINGS_FILE}")"
+assert_contains "openrouter-haiku model_id 正确" "anthropic/claude-haiku-4-5-20251001" "${content}"
+
+_teardown
+
+# ════════════════════════════════════════
+#  15. cmd_switch 自定义供应商
+# ════════════════════════════════════════
+section "cmd_switch 自定义供应商"
+
+_setup
+
+_write_token "azure" "azure-key-123"
+cmd_provider add "azure" "https://xxx.openai.azure.com" "ANTHROPIC_API_KEY" &>/dev/null
+
+# 注意：自定义模型需要在 CONFIG_DIR/models 文件中定义
+mkdir -p "${CONFIG_DIR}"
+echo "my-claude=azure|anthropic/claude-sonnet-4-6|My Claude via Azure" >> "${CONFIG_DIR}/models"
+
+# 重新 source 以加载自定义模型（这里测试 model_get 直接查文件）
+assert_eq "自定义供应商模型 model_id 正确" "anthropic/claude-sonnet-4-6" "$(model_get my-claude model_id)"
 
 _teardown
 
