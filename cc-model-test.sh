@@ -261,7 +261,7 @@ assert_eq "switch Anthropic 模型不写入 BASE_URL" \
 cmd_switch "openrouter-gemini-pro" &>/dev/null
 content="$(cat "${SETTINGS_FILE}")"
 assert_contains "switch openrouter-gemini-pro 写入 ANTHROPIC_BASE_URL 键" '"ANTHROPIC_BASE_URL"' "${content}"
-assert_contains "switch openrouter-gemini-pro BASE_URL 指向 openrouter"   'openrouter.ai'   "${content}"
+assert_contains "switch openrouter-gemini-pro BASE_URL 指向 openrouter"   'openrouter.ai/api'   "${content}"
 
 # 切回官方 Claude，BASE_URL 应被移除
 cmd_switch "claude" &>/dev/null
@@ -393,7 +393,7 @@ assert_eq "anthropic token_required 为 false" "false" "$(provider_get anthropic
 assert_eq "anthropic is_official 为 true" "true" "$(provider_get anthropic is_official)"
 
 # openrouter
-assert_eq "openrouter base_url 正确" "https://openrouter.ai/api/v1" "$(provider_get openrouter base_url)"
+assert_eq "openrouter base_url 正确" "https://openrouter.ai/api" "$(provider_get openrouter base_url)"
 assert_eq "openrouter auth_key 为 ANTHROPIC_AUTH_TOKEN" "ANTHROPIC_AUTH_TOKEN" "$(provider_get openrouter auth_key)"
 assert_eq "openrouter token_required 为 true" "true" "$(provider_get openrouter token_required)"
 assert_eq "openrouter is_official 为 false" "false" "$(provider_get openrouter is_official)"
@@ -537,7 +537,7 @@ _write_settings '{"model":"old"}'
 cmd_switch "openrouter-sonnet" &>/dev/null
 content="$(cat "${SETTINGS_FILE}")"
 assert_contains "openrouter-sonnet model_id 为 anthropic/claude-sonnet-4-6" "anthropic/claude-sonnet-4-6" "${content}"
-assert_contains "openrouter-sonnet 使用 openrouter BASE_URL" "openrouter.ai" "${content}"
+assert_contains "openrouter-sonnet 使用 openrouter BASE_URL" "openrouter.ai/api" "${content}"
 assert_contains "openrouter-sonnet 写入 ANTHROPIC_AUTH_TOKEN" "ANTHROPIC_AUTH_TOKEN" "${content}"
 
 # openrouter-haiku
