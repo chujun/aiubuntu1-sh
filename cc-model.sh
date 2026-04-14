@@ -34,7 +34,7 @@ BACKUP_KEEP=5   # 每个文件最多保留的备份份数
 # - description: 显示名称
 declare -A PROVIDERS=(
     [anthropic]="||false|true|Anthropic 官方"
-    [openrouter]="https://openrouter.ai/api/v1|ANTHROPIC_API_KEY|true|false|OpenRouter"
+    [openrouter]="https://openrouter.ai/api/v1|ANTHROPIC_AUTH_TOKEN|true|false|OpenRouter"
     [minimax]="https://api.minimaxi.com/anthropic|ANTHROPIC_AUTH_TOKEN|true|false|MiniMax 国内"
 )
 

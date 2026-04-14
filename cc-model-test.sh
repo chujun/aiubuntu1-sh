@@ -394,7 +394,7 @@ assert_eq "anthropic is_official 为 true" "true" "$(provider_get anthropic is_o
 
 # openrouter
 assert_eq "openrouter base_url 正确" "https://openrouter.ai/api/v1" "$(provider_get openrouter base_url)"
-assert_eq "openrouter auth_key 为 ANTHROPIC_API_KEY" "ANTHROPIC_API_KEY" "$(provider_get openrouter auth_key)"
+assert_eq "openrouter auth_key 为 ANTHROPIC_AUTH_TOKEN" "ANTHROPIC_AUTH_TOKEN" "$(provider_get openrouter auth_key)"
 assert_eq "openrouter token_required 为 true" "true" "$(provider_get openrouter token_required)"
 assert_eq "openrouter is_official 为 false" "false" "$(provider_get openrouter is_official)"
 
@@ -538,7 +538,7 @@ cmd_switch "openrouter-sonnet" &>/dev/null
 content="$(cat "${SETTINGS_FILE}")"
 assert_contains "openrouter-sonnet model_id 为 anthropic/claude-sonnet-4-6" "anthropic/claude-sonnet-4-6" "${content}"
 assert_contains "openrouter-sonnet 使用 openrouter BASE_URL" "openrouter.ai" "${content}"
-assert_contains "openrouter-sonnet 写入 ANTHROPIC_API_KEY" "ANTHROPIC_API_KEY" "${content}"
+assert_contains "openrouter-sonnet 写入 ANTHROPIC_AUTH_TOKEN" "ANTHROPIC_AUTH_TOKEN" "${content}"
 
 # openrouter-haiku
 cmd_switch "openrouter-haiku" &>/dev/null
