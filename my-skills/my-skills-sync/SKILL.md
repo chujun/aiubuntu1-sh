@@ -37,13 +37,9 @@ my-skills/
 │   ├── sync.log                 # 同步日志
 │   ├── watch.log                # 监控日志
 │   └── watch.pid               # 监控进程 PID
-├── watch-skills.sh             # → my-skills-sync/watch-skills.sh (符号链接)
-├── sync-skills.sh              # → my-skills-sync/sync-skills.sh (符号链接)
 ├── my-explore-doc-record/       # 其他自定义技能
 └── my-fix-claude-code-viewer/
 ```
-
-> **注意**：`watch-skills.sh` 和 `sync-skills.sh` 通过符号链接指向 `my-skills-sync/` 子目录，这是为了让 systemd 服务配置（`WorkingDirectory=/root/sh/my-skills`）能找到脚本。
 
 ## 快速开始
 
@@ -61,13 +57,13 @@ sudo yum install inotify-tools rsync
 
 ```bash
 cd my-skills/my-skills-sync
-./sync-skills.sh
+bash sync-skills.sh
 ```
 
 ### 3. 启动监控
 
 ```bash
-./watch-skills.sh start
+bash watch-skills.sh start
 ```
 
 ### 4. 配置开机自启（可选）
@@ -83,12 +79,12 @@ sudo systemctl start my-skills-sync.service
 
 | 命令 | 说明 |
 |------|------|
-| `./sync-skills.sh` | 手动执行一次同步 |
-| `./watch-skills.sh start` | 启动后台监控 |
-| `./watch-skills.sh stop` | 停止后台监控 |
-| `./watch-skills.sh restart` | 重启监控 |
-| `./watch-skills.sh status` | 查看监控状态 |
-| `./watch-skills.sh sync` | 手动触发同步 |
+| `bash sync-skills.sh` | 手动执行一次同步 |
+| `bash watch-skills.sh start` | 启动后台监控 |
+| `bash watch-skills.sh stop` | 停止后台监控 |
+| `bash watch-skills.sh restart` | 重启监控 |
+| `bash watch-skills.sh status` | 查看监控状态 |
+| `bash watch-skills.sh sync` | 手动触发同步 |
 
 ## 核心脚本
 
@@ -149,9 +145,9 @@ After=network.target
 [Service]
 Type=forking
 User=root
-WorkingDirectory=/root/sh/my-skills
-ExecStart=/root/sh/my-skills/watch-skills.sh start
-ExecStop=/root/sh/my-skills/watch-skills.sh stop
+WorkingDirectory=/root/sh/my-skills/my-skills-sync
+ExecStart=/root/sh/my-skills/my-skills-sync/watch-skills.sh start
+ExecStop=/root/sh/my-skills/my-skills-sync/watch-skills.sh stop
 Restart=on-failure
 RestartSec=10
 
@@ -240,6 +236,7 @@ tail -f watch.log
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.2.0 | 2026-04-24 | 简化结构，移除符号链接，使用完整路径运行脚本 |
 | 1.1.0 | 2026-04-24 | 修复服务路径问题，通过符号链接解决脚本位置与 systemd WorkingDirectory 不一致的问题 |
 | 1.0.0 | 2026-04-13 | 初始版本，包含同步、监控、systemd 服务 |
 

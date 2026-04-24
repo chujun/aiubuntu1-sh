@@ -5,9 +5,9 @@ After=network.target
 [Service]
 Type=forking
 User=root
-WorkingDirectory=/root/sh/my-skills
-ExecStart=/root/sh/my-skills/watch-skills.sh start
-ExecStop=/root/sh/my-skills/watch-skills.sh stop
+WorkingDirectory=/root/sh/my-skills/my-skills-sync
+ExecStart=/root/sh/my-skills/my-skills-sync/watch-skills.sh start
+ExecStop=/root/sh/my-skills/my-skills-sync/watch-skills.sh stop
 Restart=on-failure
 RestartSec=10
 
