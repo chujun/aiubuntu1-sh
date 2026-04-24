@@ -3,18 +3,20 @@ AIGC:
     ContentProducer: Minimax Agent AI
     ContentPropagator: Minimax Agent AI
     Label: AIGC
-    ProduceID: a09f838e95d206baf0736a4ad702e0d8
-    PropagateID: a09f838e95d206baf0736a4ad702e0d8
-    ReservedCode1: 3044022028e19ac3ac2311f06780c967f9a6b2cf4666464f18312b21c3be7baa9790877502201742d961ed20e5e4b9bd30bf7c754e9c32106c17a2633ac0a8c7762c2c3528c7
-    ReservedCode2: 304502203ec73a2092eed68bfadac75e75a9c91fbee32797153f2129ca9b743280f2139702210094c8b8b0f39a7f611127c291e2fbfc0871beccaa9375d232639403c277ce3b76
+    ProduceID: c867a57fdd9ff85d741ed445cbc482fa
+    PropagateID: c867a57fdd9ff85d741ed445cbc482fa
+    ReservedCode1: 30450220325c6b8fae76f1b0019bad68c063c2390f66d894a88747a09397cf523de640f3022100df98c47789964796eedc55cdcaa0f4604fa3a88707fdc4c1fc37b7b639f9d616
+    ReservedCode2: 304402202c2bed2834cc71e3052df6713f0b5314b4875b28bc07e97a3bc828ab79cba50a02201a889fb9c647eb6f615e70d1457a09aa098ced548d0f21ffbe6abfc7d86de4df
 ---
+
+
 
 # Hermes Agent 综合分析报告
 
 > 文档版本：1.0
-> 
+>
 > 生成日期：2026年4月24日
-> 
+>
 > 制作工具：MiniMax Agent
 
 ---
@@ -718,34 +720,262 @@ hermes gateway --platforms feishu,telegram
 
 消息网关需要接收来自外部平台（如飞书、Telegram）的Webhook回调。当Hermes Agent部署在内网环境时，需要内网穿透技术将服务暴露给外部访问。
 
-### 8.2 主流方案对比
+### 8.2 推荐方案：Cloudflare Workers（优先选择）
+
+Cloudflare Workers 是本次推荐的**首选内网穿透方案**，特别适合需要稳定、安全、全球访问的应用场景。
+
+#### 8.2.1 Cloudflare Workers 方案优势
+
+```mermaid
+flowchart TD
+    subgraph 核心优势["Cloudflare Workers 核心优势"]
+        G1["🏆 免费额度充足<br/>每天10万次请求"]
+        G2["⚡ 全球边缘加速<br/>300+数据中心"]
+        G3["🔒 自动HTTPS<br/>免费SSL证书"]
+        G4["🔧 零服务器运维<br/>无需管理基础设施"]
+        G5["🌍 国内访问良好<br/>通过CDN加速"]
+        G6["💰 成本可控<br/>免费版足够个人使用"]
+    end
+
+    style 核心优势 fill:#e3f2fd
+```
+
+| 优势维度 | 说明 |
+|---------|------|
+| 免费额度 | 每天10万次请求，足够个人用户和小型项目使用 |
+| 全球加速 | Cloudflare拥有全球最大的CDN网络，访问延迟低 |
+| HTTPS自动 | 自动提供免费SSL证书，无需额外配置 |
+| 零运维 | 无服务器架构，无需管理任何服务器或容器 |
+| 国内访问 | 通过Cloudflare网络加速，国内访问速度良好 |
+| 稳定性 | 企业级基础设施保证99.9%以上的可用性 |
+
+#### 8.2.2 工作原理
+
+```mermaid
+flowchart LR
+    subgraph 用户["用户设备"]
+        USER[飞书/Telegram/浏览器]
+    end
+
+    subgraph Cloudflare["Cloudflare 全球网络"]
+        CF_EDGE["边缘节点<br/>Workers执行"]
+        TUNNEL["Cloudflare Tunnel<br/>Zero Trust"]
+    end
+
+    subgraph 内网["内网环境"]
+        CLIENT["Tunnel客户端<br/>cloudflared"]
+        HERMES["Hermes Agent<br/>:8080"]
+    end
+
+    USER -->|HTTPS| CF_EDGE
+    CF_EDGE -->|代理| TUNNEL
+    TUNNEL -->|加密隧道| CLIENT
+    CLIENT -->|本地连接| HERMES
+
+    style Cloudflare fill:#f6821f,color:#fff
+    style 内网 fill:#e3f2fd
+```
+
+#### 8.2.3 详细配置步骤
+
+**第一步：创建Cloudflare账号**
+
+访问 [dash.cloudflare.com](https://dash.cloudflare.com) 注册账号并完成邮箱验证。如果已有Cloudflare账号可直接登录。
+
+**第二步：添加域名（可选，用于自定义域名）**
+
+如果拥有自己的域名，可以将其添加到Cloudflare进行DNS管理。免费账号支持添加无限域名。
+
+1. 登录Cloudflare Dashboard
+2. 点击「添加站点」
+3. 输入域名并选择免费计划
+4. 按照提示修改域名服务器
+
+**第三步：安装cloudflared客户端**
+
+cloudflared是Cloudflare Tunnel的客户端程序，负责在内网服务器与Cloudflare之间建立加密隧道。
+
+```bash
+# Linux/macOS 安装
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+chmod +x cloudflared
+sudo mv cloudflared /usr/local/bin/
+
+# macOS 通过Homebrew安装
+brew install cloudflare/cloudflare/cloudflared
+
+# 验证安装
+cloudflared --version
+```
+
+**第四步：创建Cloudflare Tunnel**
+
+```bash
+# 登录Cloudflare（会打开浏览器进行授权）
+cloudflared tunnel login
+
+# 创建隧道（隧道名称可自定义）
+cloudflared tunnel create hermes-agent
+
+# 查看创建的隧道ID
+cloudflared tunnel list
+```
+
+**第五步：配置隧道路由**
+
+创建隧道配置文件，指定将流量路由到本地Hermes Agent服务。
+
+```bash
+# 创建配置目录
+mkdir -p ~/.cloudflared
+
+# 创建配置文件
+cat > ~/.cloudflared/config.yml << 'EOF'
+# 隧道标识（替换为实际的隧道ID）
+tunnel: <your-tunnel-id>
+
+# Cloudflare账号凭证
+credentials-file: /root/.cloudflared/<your-tunnel-id>.json
+
+# ingress规则：定义外部请求如何路由到内部服务
+ingress:
+  # 将hermes.example.com的请求转发到本地8080端口
+  - hostname: hermes.example.com
+    service: http://localhost:8080
+    originRequest:
+      noTLSVerify: false
+
+  # 默认路由：如果域名不匹配以上规则，返回404
+  - service: http_status:404
+```
+
+**第六步：配置DNS记录**
+
+```bash
+# 通过cloudflared直接创建DNS记录
+cloudflared tunnel route dns hermes-agent hermes.example.com
+
+# 或手动在Cloudflare Dashboard中创建CNAME记录
+# 类型: CNAME
+# 名称: hermes
+# 目标: <your-tunnel-id>.cfargotunnel.com
+# 代理状态: 代理中（橙色云）
+```
+
+**第七步：启动隧道服务**
+
+```bash
+# 前台运行测试
+cloudflared tunnel run hermes-agent
+
+# 后台运行（推荐）
+cloudflared tunnel run hermes-agent --no-autoupdate > /var/log/cloudflared.log 2>&1 &
+
+# 或通过systemd服务管理
+cat > /etc/systemd/system/cloudflared.service << 'EOF'
+[Unit]
+Description=Cloudflare Tunnel
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Restart=on-failure
+RestartSec=5s
+ExecStart=/usr/local/bin/cloudflared tunnel run hermes-agent --no-autoupdate
+Environment="TUNNEL_LOGLEVEL=info"
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable cloudflared
+sudo systemctl start cloudflared
+sudo systemctl status cloudflared
+```
+
+**第八步：配置Hermes Agent**
+
+```bash
+# 设置外部访问基础URL
+hermes config set EXTERNAL_BASE_URL https://hermes.example.com
+
+# 或通过环境变量
+export HERMES_EXTERNAL_BASE_URL=https://hermes.example.com
+
+# 重启Hermes Agent网关
+hermes gateway
+```
+
+#### 8.2.4 完整架构图
 
 ```mermaid
 flowchart TB
-    subgraph 方案对比["内网穿透方案对比"]
-        NGROK["ngrok<br/>免费/简单<br/>无需公网服务器"]
-        FRP["frp<br/>自建服务端<br/>完全免费开源<br/>国内速度快"]
-        ZT["ZeroTier<br/>VPN组网<br/>安全私密<br/>多设备互通"]
-        CF["Cloudflare Workers<br/>无服务器架构<br/>全球边缘加速"]
+    subgraph 用户层["用户请求来源"]
+        FEISHU["飞书平台"]
+        TELEGRAM["Telegram平台"]
+        BROWSER["浏览器访问"]
     end
 
-    subgraph 适用场景["推荐场景"]
-        S1["个人用户快速试用"]
-        S2["生产环境高稳定性"]
-        S3["多设备安全互联"]
-        S4["全球访问加速"]
+    subgraph Cloudflare层["Cloudflare 网络"]
+        DNS["DNS解析<br/>CF代理"]
+        EDGE["边缘节点<br/>HTTPS终止"]
+        TUNNEL["Tunnel服务<br/>加密传输"]
     end
 
-    NGROK --> S1
-    FRP --> S2
-    ZT --> S3
-    CF --> S4
+    subgraph 内网服务器["内网服务器"]
+        CFD["cloudflared<br/>守护进程"]
+        HERMES["Hermes Agent<br/>Gateway :8080"]
+        DATA["数据目录<br/>~/.hermes/"]
+    end
 
-    style 方案对比 fill:#e3f2fd
-    style 适用场景 fill:#f1f8e9
+    FEISHU -->|HTTPS请求| DNS
+    TELEGRAM -->|HTTPS请求| DNS
+    BROWSER -->|HTTPS请求| DNS
+    DNS --> EDGE
+    EDGE --> TUNNEL
+    TUNNEL --> CFD
+    CFD --> HERMES
+    HERMES --> DATA
+
+    style Cloudflare层 fill:#f6821f,color:#fff
+    style 内网服务器 fill:#e3f2fd
+    style 用户层 fill:#e8f5e8
 ```
 
-### 8.3 ngrok 配置示例
+#### 8.2.5 飞书Webhook配置
+
+完成Cloudflare Tunnel配置后，需要在飞书开放平台配置Webhook地址：
+
+1. 登录飞书开放平台（open.feishu.cn）
+2. 进入应用管理 → 事件与回调 → 请求地址配置
+3. 配置请求地址为：`https://hermes.example.com/feishu/webhook`
+4. 启用接收消息事件：`im.message.receive_v1`
+5. 保存配置后，飞书会向该地址发送验证请求
+
+#### 8.2.6 故障排查
+
+```bash
+# 检查cloudflared日志
+journalctl -u cloudflared -f
+
+# 测试隧道连接
+cloudflared tunnel info hermes-agent
+
+# 检查DNS解析
+dig hermes.example.com
+
+# 测试本地连接
+curl -v http://localhost:8080/health
+
+# 验证外部访问
+curl -v https://hermes.example.com/health
+```
+
+### 8.3 备选方案一：ngrok
+
+ngrok是快速原型验证的好选择，适合临时测试或简单场景使用。
 
 ```bash
 # 1. 安装ngrok
@@ -763,7 +993,9 @@ ngrok http 8080
 hermes config set EXTERNAL_BASE_URL https://abc123.ngrok-free.app
 ```
 
-### 8.4 frp 配置示例
+### 8.4 备选方案二：frp
+
+frp适合有自建服务器、追求完全自主控制的用户。
 
 **服务端（frps）配置**
 
@@ -791,35 +1023,39 @@ local_port = 8080
 custom_domains = ["hermes.example.com"]
 ```
 
-### 8.5 架构对比图
+### 8.5 方案对比总结
 
 ```mermaid
 flowchart TB
-    subgraph 外部服务["外部服务"]
-        FEISHU["飞书"]
-        TELEGRAM["Telegram"]
+    subgraph 推荐["🎯 推荐方案"]
+        REC["Cloudflare Workers<br/>✅ 优先选择<br/>免费/稳定/全球加速"]
     end
 
-    subgraph 内网穿透["内网穿透层"]
-        NGROK_CLOUD["ngrok云服务器"]
-        FRP_SERVER["frp服务端"]
+    subgraph 备选["备选方案"]
+        ALT1["ngrok<br/>⚡ 快速测试<br/>⚠️ 免费版有限制"]
+        ALT2["frp<br/>🔧 完全自控<br/>⚠️ 需自建服务器"]
     end
 
-    subgraph 内网服务器["内网服务器"]
-        HERMES["Hermes Agent"]
-        PORT[Gateway :8080]
+    subgraph 适用["选择建议"]
+        S1["生产环境 → Cloudflare"]
+        S2["开发测试 → ngrok"]
+        S3["企业内网 → frp"]
     end
 
-    FEISHU -->|HTTPS回调| NGROK_CLOUD
-    TELEGRAM -->|HTTPS回调| FRP_SERVER
-    NGROK_CLOUD -->|隧道| HERMES
-    FRP_SERVER -->|代理| HERMES
-    HERMES --> PORT
+    REC --> S1
+    ALT1 --> S2
+    ALT2 --> S3
 
-    style 外部服务 fill:#e8f5e8
-    style 内网穿透 fill:#fff3e0
-    style 内网服务器 fill:#e3f2fd
+    style 推荐 fill:#4caf50,color:#fff
+    style 备选 fill:#ff9800
+    style 适用 fill:#e3f2fd
 ```
+
+| 方案 | 推荐场景 | 免费额度 | 稳定性 | 配置复杂度 |
+|-----|---------|---------|-------|-----------|
+| Cloudflare Workers | **生产环境首选** | 每天10万请求 | ⭐⭐⭐⭐⭐ | 中等 |
+| ngrok | 快速测试/原型验证 | 1个隧道/3个端口 | ⭐⭐⭐ | 低 |
+| frp | 完全自控/企业内网 | 无限制 | ⭐⭐⭐⭐ | 中等 |
 
 ---
 
@@ -910,3 +1146,4 @@ hermes --help
 ---
 
 *本文档由 MiniMax Agent 基于 Hermes Agent 公开资料和社区讨论整理生成。*
+s
