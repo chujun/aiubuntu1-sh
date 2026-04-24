@@ -1,0 +1,38 @@
+#!/bin/bash
+# bash completion for my-cc-model
+
+_my_cc_model() {
+    local cur prev words cword
+    _init_completion || return
+
+    local commands="switch run restore current list provider token"
+
+    if [[ $cword -eq 1 ]]; then
+        COMPREPLY=($(compgen -W "$commands" -- "$cur"))
+        return
+    fi
+
+    case "${words[1]}" in
+        switch|run)
+            local models="claude claude-opus claude-sonnet claude-haiku claude-3-5-sonnet claude-3-opus claude-3-sonnet claude-3-haiku openrouter-sonnet openrouter-haiku openrouter-gpt-4o openrouter-gpt-4o-mini openrouter-gpt-4-turbo openrouter-gemini-pro openrouter-gemini-flash openrouter-deepseek-chat openrouter-mistral-large openrouter-llama-3-70b openrouter-qwen-2-72b openrouter-yi-large minimax-m2"
+            COMPREPLY=($(compgen -W "$models" -- "$cur"))
+            ;;
+        restore)
+            COMPREPLY=($(compgen -W "1 2 3 4 5" -- "$cur"))
+            ;;
+        provider)
+            if [[ $cword -eq 2 ]]; then
+                COMPREPLY=($(compgen -W "list add del" -- "$cur"))
+            elif [[ "${words[2]}" == "add" && $cword -eq 3 ]]; then
+                COMPREPLY=($(compgen -W "<name>" -- "$cur"))
+            fi
+            ;;
+        token)
+            if [[ $cword -eq 2 ]]; then
+                COMPREPLY=($(compgen -W "set del list" -- "$cur"))
+            elif [[ "${words[2]}" == "set" && $cword -eq 3 ]]; then
+                COMPREPLY=($(compgen -W "openrouter anthropic" -- "$cur"))
+            fi
+            ;;
+    esac
+} && complete -F _my_cc_model my-cc-model

@@ -1,0 +1,16 @@
+#!/bin/bash
+# bash completion for my-network-test
+
+_my_network_test() {
+    local cur prev words cword
+    _init_completion || return
+
+    local options="-h --help -c --config -l --log -p --ping -w --http -i --ip --create-config --ping-count --ping-timeout --curl-timeout"
+    local test_types="full ping http https dns route perf port info report"
+
+    if [[ "$cur" == -* ]]; then
+        COMPREPLY=($(compgen -W "$options" -- "$cur"))
+    else
+        COMPREPLY=($(compgen -W "$test_types" -- "$cur"))
+    fi
+} && complete -F _my_network_test my-network-test

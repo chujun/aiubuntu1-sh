@@ -12,17 +12,17 @@
 #   4. 由于宿主机IP（WiFi地址）可能变化，需要动态检测
 #
 # 自动检测宿主机IP的逻辑：
-#   1. 首先尝试默认网关（NAT模式的192.168.40.2）
+#   1. 首先探测 VMware NAT 默认网关 $VMWARE_NAT_GATEWAY（最快）
 #   2. 如果默认网关不可达，扫描常见VMware网段
 #   3. 通过TCP连接测试代理端口（10810）确认宿主机
 #   4. 扫描网段：10.1.32.x, 10.1.x, 192.168.40.x 等
 #
 # 使用示例：
-#   ./set-proxy.sh -s              # 自动检测宿主机IP设置代理
-#   ./set-proxy.sh -i 10.1.32.61 -s  # 手动指定宿主机IP
-#   ./set-proxy.sh -e              # 持久化配置（开机自动加载）
-#   ./set-proxy.sh -u              # 取消代理
-#   ./set-proxy.sh -t              # 测试代理连通性
+#   ./my-set-proxy.sh -s              # 自动检测宿主机IP设置代理
+#   ./my-set-proxy.sh -i 10.1.32.61 -s # 手动指定宿主机IP
+#   ./my-set-proxy.sh -e              # 持久化配置（开机自动加载）
+#   ./my-set-proxy.sh -u              # 取消代理
+#   ./my-set-proxy.sh -t              # 测试代理连通性
 #
 # 环境变量：
 #   HOST_IP           - 指定宿主机IP（优先级最高）
@@ -40,6 +40,7 @@ NC='\033[0m'
 
 VPN_PROXY_PORT=${VPN_PROXY_PORT:-10810}
 PROXY_PROTOCOL=${PROXY_PROTOCOL:-http}
+VMWARE_NAT_GATEWAY=${VMWARE_NAT_GATEWAY:-192.168.40.1}
 
 show_usage() {
     echo -e "${BLUE}用法: $0 [选项]${NC}"
@@ -67,30 +68,35 @@ show_usage() {
 
 get_host_ip() {
     local _host_ip
-  #直接暴力遍历得VPN端口号得了  
-  #  if [ -n "$HOST_IP" ]; then
-  #     echo "$HOST_IP"
-  #      return
-  #  fi
-    
-  #  _host_ip=$(ip route show default 2>/dev/null | awk '/default/ {print $3}')
-    
-  #  if timeout 1 bash -c "echo >/dev/tcp/${_host_ip}/${VPN_PROXY_PORT}" 2>/dev/null; then
-  #      echo "$_host_ip"
-  #      return
-  #  fi
-    
-    echo -e "${YELLOW}[INFO]${NC} 默认网关 $_host_ip 不可达，尝试自动检测宿主机IP..."
-    
+
+    # 优先探测 VMware NAT 默认网关
+    echo -e "${YELLOW}[INFO]${NC} 优先探测 VMware NAT 默认网关 ${VMWARE_NAT_GATEWAY}..."
+    if timeout 0.5 bash -c "echo >/dev/tcp/${VMWARE_NAT_GATEWAY}/${VPN_PROXY_PORT}" 2>/dev/null; then
+        echo -e "${GREEN}[INFO]${NC} 检测到宿主机IP: ${VMWARE_NAT_GATEWAY}"
+        echo "${VMWARE_NAT_GATEWAY}"
+        return 0
+    fi
+    echo -e "${YELLOW}[INFO]${NC} ${VMWARE_NAT_GATEWAY} 不可达，继续扫描..."
+
+    # 尝试默认网关
+    _host_ip=$(ip route show default 2>/dev/null | awk '/default/ {print $3}')
+    if [ -n "$_host_ip" ] && timeout 0.5 bash -c "echo >/dev/tcp/${_host_ip}/${VPN_PROXY_PORT}" 2>/dev/null; then
+        echo -e "${GREEN}[INFO]${NC} 检测到宿主机IP: $_host_ip"
+        echo "$_host_ip"
+        return 0
+    fi
+
+    echo -e "${YELLOW}[INFO]${NC} 尝试自动检测宿主机IP..."
+
     local vmnet_subnets=(
         "10.1.35" "10.1.32" "10.1.0" "10.0.0"
-        "192.168.31" "192.168.80" "192.168.50" 
+        "192.168.31" "192.168.80" "192.168.50"
         "192.168.126" "192.168.174" "192.168.1"
     )
-    
+
     local found_ip=""
     local pids=()
-    
+
     for subnet in "${vmnet_subnets[@]}"; do
         echo -e "${YELLOW}[INFO]${NC} 正在并行扫描网段: ${subnet}.x ..."
         for i in {1..254}; do
@@ -101,7 +107,7 @@ get_host_ip() {
                 fi
             ) &
             pids+=($!)
-            
+
             if [ ${#pids[@]} -ge 50 ]; then
                 for pid in "${pids[@]}"; do
                     wait $pid 2>/dev/null
@@ -117,11 +123,11 @@ get_host_ip() {
             fi
         done
     done
-    
+
     for pid in "${pids[@]}"; do
         wait $pid 2>/dev/null
     done
-    
+
     if [ -f /tmp/proxy_found_ip ]; then
         found_ip=$(cat /tmp/proxy_found_ip)
         rm -f /tmp/proxy_found_ip
@@ -129,7 +135,7 @@ get_host_ip() {
         echo "$found_ip"
         return
     fi
-    
+
     echo -e "${RED}[ERROR]${NC} 无法自动检测宿主机IP，请手动指定: -i <IP>"
     return 1
 }
@@ -152,8 +158,8 @@ set_proxy() {
     echo -e "${GREEN}[INFO]${NC} 代理已设置: http_proxy=$http_proxy"
     echo -e "${GREEN}[INFO]${NC} 代理已设置: https_proxy=$https_proxy"
     
-    echo "http_proxy=$http_proxy" > ~/.proxy_env
-    echo "https_proxy=$https_proxy" >> ~/.proxy_env
+    echo "export http_proxy=$http_proxy" > ~/.proxy_env
+    echo "export https_proxy=$https_proxy" >> ~/.proxy_env
     
     echo -e "${GREEN}[INFO]${NC} 代理配置已保存到 ~/.proxy_env"
 }

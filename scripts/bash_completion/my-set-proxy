@@ -1,0 +1,32 @@
+#!/bin/bash
+# bash completion for my-set-proxy
+
+_my_set_proxy() {
+    local cur prev words cword
+    _init_completion || return
+
+    local options_with_args="-s --set -i --ip"
+    local boolean_options="-u --unset --show -t --test -e --enable -h --help"
+
+    # 如果当前是空或以-开头
+    if [[ "$cur" == -* ]]; then
+        # 合并所有选项
+        COMPREPLY=($(compgen -W "$options_with_args $boolean_options" -- "$cur"))
+        compopt -o nospace
+        return
+    fi
+
+    # 获取前一个选项
+    case "$prev" in
+        -s|--set)
+            # 端口补全
+            COMPREPLY=($(compgen -W "10810 10808 7890 1080" -- "$cur"))
+            return
+            ;;
+        -i|--ip)
+            # 常见宿主机IP补全
+            COMPREPLY=($(compgen -W "192.168.40.1 10.1.32.61 10.1.35.x" -- "$cur"))
+            return
+            ;;
+    esac
+} && complete -F _my_set_proxy my-set-proxy
