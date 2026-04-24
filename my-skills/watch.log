@@ -1,0 +1,4 @@
+[2026-04-24 08:36:03] 检测到变化: /root/.claude/skills/my-skills-sync/ DELETE watch-skills.sh
+[2026-04-24 08:36:03] 检测到变化: /root/.claude/skills/my-skills-sync/ DELETE my-skills-sync.service
+[2026-04-24 08:36:03] 检测到变化: /root/.claude/skills/my-skills-sync/ DELETE sync-skills.sh
+[2026-04-24 08:36:03] 检测到变化: /root/.claude/skills/my-skills-sync/ DELETE SKILL.md

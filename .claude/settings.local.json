@@ -3,7 +3,15 @@
     "allow": [
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(systemctl:*)",
+      "Bash(journalctl:*)",
+      "Bash(curl:*)",
+      "Bash(git remote:*)",
+      "Bash(python3 -c \"import json, os; cfg = os.path.expanduser\\(''~/.claude/settings.json''\\); d = json.load\\(open\\(cfg\\)\\); mcps = d.get\\(''mcpServers'', {}\\); print\\(''MCP 服务:'' if mcps else ''（未配置 MCP 服务）''\\); [print\\(f''  - {n}''\\) for n in mcps]\")",
+      "Bash(python3:*)",
+      "Bash(sudo systemctl:*)",
+      "Bash(sudo journalctl:*)"
     ]
   }
 }

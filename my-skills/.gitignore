@@ -1,6 +1,0 @@
-# Claude Code 配置目录
-.claude/
-
-# 运行时日志和 PID 文件
-*.log
-*.pid
