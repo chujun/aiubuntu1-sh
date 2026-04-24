@@ -2,8 +2,8 @@
 name: my-skills-sync
 description: 自动同步 Claude Code 自定义技能（my-* 打头的 skill）到本地目录，支持文件监听实时同步和 systemd 服务开机自启动。
 origin: local
-version: "1.0.0"
-updated: "2026-04-13"
+version: "1.1.0"
+updated: "2026-04-24"
 ---
 
 # My Skills Sync
@@ -37,9 +37,13 @@ my-skills/
 │   ├── sync.log                 # 同步日志
 │   ├── watch.log                # 监控日志
 │   └── watch.pid               # 监控进程 PID
+├── watch-skills.sh             # → my-skills-sync/watch-skills.sh (符号链接)
+├── sync-skills.sh              # → my-skills-sync/sync-skills.sh (符号链接)
 ├── my-explore-doc-record/       # 其他自定义技能
 └── my-fix-claude-code-viewer/
 ```
+
+> **注意**：`watch-skills.sh` 和 `sync-skills.sh` 通过符号链接指向 `my-skills-sync/` 子目录，这是为了让 systemd 服务配置（`WorkingDirectory=/root/sh/my-skills`）能找到脚本。
 
 ## 快速开始
 
@@ -145,9 +149,9 @@ After=network.target
 [Service]
 Type=forking
 User=root
-WorkingDirectory=/root/sh/my-skills/my-skills-sync
-ExecStart=/root/sh/my-skills/my-skills-sync/watch-skills.sh start
-ExecStop=/root/sh/my-skills/my-skills-sync/watch-skills.sh stop
+WorkingDirectory=/root/sh/my-skills
+ExecStart=/root/sh/my-skills/watch-skills.sh start
+ExecStop=/root/sh/my-skills/watch-skills.sh stop
 Restart=on-failure
 RestartSec=10
 
@@ -236,6 +240,7 @@ tail -f watch.log
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| 1.1.0 | 2026-04-24 | 修复服务路径问题，通过符号链接解决脚本位置与 systemd WorkingDirectory 不一致的问题 |
 | 1.0.0 | 2026-04-13 | 初始版本，包含同步、监控、systemd 服务 |
 
 ## 输出示例

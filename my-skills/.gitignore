@@ -1,0 +1,7 @@
+# 运行时日志和 PID 文件
+*.log
+*.pid
+
+# 符号链接（运行时生成）
+# sync-skills.sh
+# watch-skills.sh
