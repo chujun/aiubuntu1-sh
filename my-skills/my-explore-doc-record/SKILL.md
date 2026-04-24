@@ -2,8 +2,8 @@
 name: my-explore-doc-record
 description: 根据当前会话内容，生成「XX应用XXX实践探索之旅」风格的 AI 学习文档，原始 Markdown 存放到统一文档项目 doc/ai-explore/，当前项目放跳转 HTML，并自动 git push 到远端。支持版本管理（备份、对比、回滚）。
 origin: local
-version: "1.10.1"
-updated: "2026-04-13"
+version: "1.10.2"
+updated: "2026-04-24"
 ---
 
 # My Explore Doc Record
@@ -66,11 +66,11 @@ date +%Y-%m-%d
 pwd
 
 # 3. GitHub 地址（非 git 项目优雅降级）
-git remote get-url origin 2>/dev/null || echo "暂无"
+git remote get-url origin || echo "暂无"
 
 # 4. 当前分支与最近提交
-git branch --show-current 2>/dev/null || echo "非 git 项目"
-git log --oneline -5 2>/dev/null || echo "暂无"
+git branch --show-current || echo "非 git 项目"
+git log --oneline -5 || echo "暂无"
 
 # 5. 技术栈自动检测（按优先级依次检测）
 if [ -f package.json ]; then
