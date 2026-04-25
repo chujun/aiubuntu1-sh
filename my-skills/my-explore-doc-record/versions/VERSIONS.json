@@ -1,6 +1,11 @@
 {
-  "current": "1.10.2",
+  "current": "1.11.0",
   "versions": [
+    {
+      "version": "1.11.0",
+      "date": "2026-04-25",
+      "changelog": "精简 SKILL.md：抽取模板到 TEMPLATE.md、Mermaid 规范到 MERMAID_RULES.md、删除重复痛点模板、技术栈并行检测、引入 mermaid-cli 语法验证"
+    },
     {
       "version": "1.10.2",
       "date": "2026-04-24",

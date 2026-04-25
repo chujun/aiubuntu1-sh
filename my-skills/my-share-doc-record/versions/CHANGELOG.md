@@ -1,5 +1,14 @@
 # my-share-doc-record 变更日志
 
+## v1.2.0 (2026-04-25)
+### 优化
+- 抽取文档结构模板到独立文件 `TEMPLATE.md`，SKILL.md 改为引用指针
+- 共享 `MERMAID_RULES.md`（与 my-explore-doc-record 保持一致）
+- Mermaid 语法验证升级：mermaid-cli 优先 + Python 静态检查回退（含未闭合括号检查）
+- Phase 0 技术栈检测改为并行检测 12 种标记文件（Node.js/Go/Python/Rust/Java/Kotlin/Ruby/PHP/Swift/C/C++/Docker）
+- Phase 0 新增 MCP 服务动态读取
+- 质量自检清单从 5 项扩充至 12 项（新增：文档头部字段完整性、乱码检测、Mermaid 最低数量、模型署名、pie chart 估算说明等）
+
 ## v1.1.0 (2026-04-25)
 ### 新增
 - 版本管理机制（备份、对比、回滚）

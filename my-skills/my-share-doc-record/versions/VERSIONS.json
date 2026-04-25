@@ -1,6 +1,12 @@
 {
-  "current": "1.1.0",
+  "current": "1.2.0",
   "versions": [
+    {
+      "version": "1.2.0",
+      "date": "2026-04-25",
+      "changelog": "抽取 TEMPLATE.md、共享 MERMAID_RULES.md、mermaid-cli 验证优先+Python 回退、并行技术栈检测（12 种）、补充质量自检清单",
+      "phases": ["Phase 0-8"]
+    },
     {
       "version": "1.1.0",
       "date": "2026-04-25",

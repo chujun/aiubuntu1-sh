@@ -1,5 +1,16 @@
 # my-explore-doc-record 变更日志
 
+## v1.11.0 (2026-04-25)
+### 优化
+- 精简 SKILL.md：从 1070 行减至约 640 行（减少约 40%）
+- 抽取文档结构模板到独立文件 `TEMPLATE.md`（含 11 章节结构、痛点清单、角色定位等）
+- 抽取 Mermaid 图表语法规范到独立文件 `MERMAID_RULES.md`
+- 删除重复的痛点表格模板（原第 670-690 行与第 601-630 行重复）
+### 新增
+- 技术栈检测改为并行检测：支持同时识别 Node.js、Go、Python、Rust、Java/Kotlin、Ruby、PHP、Swift、C/C++、Docker 等多种技术栈
+- Mermaid 语法验证优先使用 `@mermaid-js/mermaid-cli` 做真正的语法解析验证，不可用时回退 Python 静态检查
+- Python 回退模式新增未闭合括号检查
+
 ## v1.10.2 (2026-04-24)
 ### 优化
 - 更新文档描述，明确支持版本管理（备份、对比、回滚）功能
