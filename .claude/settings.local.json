@@ -11,7 +11,13 @@
       "Bash(python3 -c \"import json, os; cfg = os.path.expanduser\\(''~/.claude/settings.json''\\); d = json.load\\(open\\(cfg\\)\\); mcps = d.get\\(''mcpServers'', {}\\); print\\(''MCP 服务:'' if mcps else ''（未配置 MCP 服务）''\\); [print\\(f''  - {n}''\\) for n in mcps]\")",
       "Bash(python3:*)",
       "Bash(sudo systemctl:*)",
-      "Bash(sudo journalctl:*)"
+      "Bash(sudo journalctl:*)",
+      "Bash(git worktree:*)",
+      "Bash(mkdir -p /root/cj_test/doc/study)",
+      "Bash(git -C /root/cj_test status)",
+      "Bash(git -C /root/cj_test add .)",
+      "Bash(git -C /root/cj_test commit -m \"feat: 添加 git-worktree-study.md\")",
+      "Bash(git:*)"
     ]
   }
 }
