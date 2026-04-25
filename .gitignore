@@ -1,4 +1,28 @@
+# Claude Code
 .claude/
 
 # Skills sync logs
 my-skills/my-skills-sync/*.log
+
+# 临时文件
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 操作系统
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+
+# 压缩缓存
+*.zip
+*.tar.gz
+*.tar
