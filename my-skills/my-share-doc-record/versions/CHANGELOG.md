@@ -1,5 +1,13 @@
 # my-share-doc-record 变更日志
 
+## v1.3.0 (2026-04-25)
+### 优化
+- SKILL.md 代码模块化：将 3 个长脚本抽取到 `SCRIPTS/` 目录
+  - `collect_metadata.sh`（~50行）→ Phase 0 元数据收集脚本
+  - `validate_mermaid.sh`（~95行）→ Mermaid 语法验证脚本（与 explore 技能共用）
+  - `auto_commit.sh`（~65行）→ 自动提交到 GitHub 脚本
+- SKILL.md 从 572 行减至 396 行（减少 176 行，31%）
+
 ## v1.2.0 (2026-04-25)
 ### 优化
 - 抽取文档结构模板到独立文件 `TEMPLATE.md`，SKILL.md 改为引用指针

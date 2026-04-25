@@ -1,5 +1,13 @@
 # my-explore-doc-record 变更日志
 
+## v1.12.0 (2026-04-25)
+### 优化
+- SKILL.md 代码模块化：将 3 个长脚本抽取到 `SCRIPTS/` 目录
+  - `collect_metadata.sh`（48行）→ Phase 0 元数据收集脚本
+  - `validate_mermaid.sh`（95行）→ Mermaid 语法验证脚本
+  - `auto_commit.sh`（75行）→ 自动提交到 GitHub 脚本
+- SKILL.md 从 883 行减至 677 行（减少 206 行，23%）
+
 ## v1.11.0 (2026-04-25)
 ### 优化
 - 精简 SKILL.md：从 1070 行减至约 640 行（减少约 40%）

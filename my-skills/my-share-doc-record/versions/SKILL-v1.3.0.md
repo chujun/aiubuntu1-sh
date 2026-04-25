@@ -3,7 +3,7 @@ name: my-share-doc-record
 description: 根据当前会话内容，生成「XXXX研究报告」风格的共享文档，原始 Markdown 存放到统一文档项目 doc/ai-share/，当前项目放跳转 HTML，并自动 git push 到远端。支持版本管理（备份、对比、回滚）和自学习更新机制。
 origin: local
 version: "1.3.0"
-updated: "2026-04-25"
+updated: "2026-04-26"
 ---
 
 # My Share Doc Record
