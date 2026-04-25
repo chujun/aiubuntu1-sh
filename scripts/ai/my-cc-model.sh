@@ -378,8 +378,11 @@ current['model'] = '${model_id}'
 # 更新 env 块
 env = current.get('env', {})
 
-# 清理所有可能的 token key
-for k in ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN']:
+# 清理所有可能的 token key 和模型相关环境变量
+for k in ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN',
+          'ANTHROPIC_MODEL', 'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+          'ANTHROPIC_DEFAULT_OPUS_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL',
+          'ANTHROPIC_REASONING_MODEL']:
     env.pop(k, None)
 
 if '${token}':
