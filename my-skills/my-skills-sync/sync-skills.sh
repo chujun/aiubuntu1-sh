@@ -3,7 +3,7 @@
 # 用法: ./sync-skills.sh
 
 SOURCE_DIR="$HOME/.claude/skills"
-TARGET_DIR="$(cd "$(dirname "$0")" && pwd)"
+TARGET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOG_FILE="$(dirname "$0")/sync.log"
 
 log() {

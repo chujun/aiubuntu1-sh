@@ -1,0 +1,17 @@
+{
+  "current": "1.1.0",
+  "versions": [
+    {
+      "version": "1.1.0",
+      "date": "2026-04-25",
+      "changelog": "新增版本管理、路径记忆、自学习机制、对齐 my-explore-doc-record 全部功能",
+      "phases": ["Phase 0-8"]
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-04-25",
+      "changelog": "初始版本",
+      "phases": ["Phase 0-4"]
+    }
+  ]
+}
