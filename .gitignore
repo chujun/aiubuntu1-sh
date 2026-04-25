@@ -1,1 +1,4 @@
 .claude/
+
+# Skills sync logs
+my-skills/my-skills-sync/*.log
