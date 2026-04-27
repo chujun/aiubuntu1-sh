@@ -1,9 +1,6 @@
 #!/bin/bash
-# 迁移脚本 - 将 /root 目录迁移到 /data
+# 迁移脚本 - 根据 scan.sh 的选择执行迁移
 
-set -e
-
-# 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -13,109 +10,96 @@ echo_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 echo_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 echo_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-# 检查是否为软链接或已存在
-check_and_migrate() {
-  local source=$1
-  local target=$2
-  local desc=$3
+SELECTION_FILE="/tmp/migrate_selection.txt"
 
-  if [ -L "$source" ]; then
-    echo_info "$desc 已是软链接，跳过: $source"
-    return 0
+# 检查选择文件
+if [ ! -f "$SELECTION_FILE" ]; then
+  echo_error "未找到选择文件，请先运行 scan.sh"
+  echo "示例：bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/scan.sh 100M"
+  exit 1
+fi
+
+selected_count=$(cat "$SELECTION_FILE" | wc -l)
+if [ "$selected_count" -eq 0 ]; then
+  echo_error "没有选择任何目录"
+  exit 1
+fi
+
+echo "=========================================="
+echo "磁盘迁移脚本"
+echo "=========================================="
+echo ""
+echo_info "将迁移 $selected_count 个目录"
+echo ""
+
+# 创建目标目录
+TARGET_DIR="/data/migrate-root"
+mkdir -p "$TARGET_DIR"
+echo_info "目标目录: $TARGET_DIR"
+
+# 迁移每个选中的目录
+migrated=0
+skipped=0
+
+while IFS= read -r source_dir; do
+  # 跳过空行
+  [ -z "$source_dir" ] && continue
+
+  dir_name=$(basename "$source_dir")
+  target_path="$TARGET_DIR/$dir_name"
+
+  # 检查是否已是软链接
+  if [ -L "$source_dir" ]; then
+    echo_warn "跳过（已是软链接）: $source_dir"
+    ((skipped++))
+    continue
   fi
 
-  if [ -d "$source" ] || [ -f "$source" ]; then
-    if [ -e "$target" ]; then
-      echo_warn "目标已存在，跳过: $target"
-      return 0
-    fi
-    mv "$source" "$target"
-    ln -s "$target" "$source"
-    echo_info "迁移成功: $source -> $target"
+  # 检查源是否存在
+  if [ ! -e "$source_dir" ]; then
+    echo_warn "跳过（不存在）: $source_dir"
+    ((skipped++))
+    continue
+  fi
+
+  # 检查目标是否已存在
+  if [ -e "$target_path" ]; then
+    echo_warn "跳过（目标已存在）: $target_path"
+    ((skipped++))
+    continue
+  fi
+
+  # 执行迁移
+  mv "$source_dir" "$target_path"
+  ln -s "$target_path" "$source_dir"
+
+  if [ $? -eq 0 ]; then
+    echo_info "迁移成功: $source_dir -> $target_path"
+    ((migrated++))
   else
-    echo_warn "源不存在，跳过: $source"
+    echo_error "迁移失败: $source_dir"
   fi
-}
 
-# 创建目录结构
-setup_directories() {
-  echo_info "创建目录结构..."
-  mkdir -p /data/user-config
-  mkdir -p /data/venvs
-  mkdir -p /data/cache
-  mkdir -p /data/claude
-  echo_info "目录创建完成"
-}
+done < "$SELECTION_FILE"
 
-# 迁移用户配置目录
-migrate_user_config() {
-  echo_info "=== 迁移用户配置目录 ==="
-
-  local items=(
-    ".npm:/data/user-config/.npm:npm 包管理"
-    ".nvm:/data/user-config/.nvm:Node 版本管理器"
-    ".local:/data/user-config/.local:用户本地配置"
-    ".opencode:/data/user-config/.opencode:OpenCode 配置"
-    ".wdm:/data/user-config/.wdm:WebDriverManager"
-    ".bun:/data/user-config/.bun:Bun 配置"
-  )
-
-  for item in "${items[@]}"; do
-    IFS=':' read -r src target desc <<< "$item"
-    check_and_migrate "/root/$src" "$target" "$desc"
-  done
-}
-
-# 迁移虚拟环境
-migrate_venvs() {
-  echo_info "=== 迁移虚拟环境 ==="
-
-  local items=(
-    "venv:/data/venvs/root-venv:Python 虚拟环境"
-    "playwright-venv:/data/venvs/playwright-venv:Playwright 测试环境"
-    "stock-quant-strategy-venv:/data/venvs/stock-quant-strategy-venv:量化交易环境"
-  )
-
-  for item in "${items[@]}"; do
-    IFS=':' read -r src target desc <<< "$item"
-    check_and_migrate "/root/$src" "$target" "$desc"
-  done
-}
-
-# 迁移缓存目录
-migrate_cache() {
-  echo_info "=== 迁移缓存目录 ==="
-
-  local items=(
-    ".paddlex:/data/cache/.paddlex:PaddleX 模型"
-    ".huggingface_cache:/data/cache/.huggingface_cache:HuggingFace 缓存"
-  )
-
-  for item in "${items[@]}"; do
-    IFS=':' read -r src target desc <<< "$item"
-    check_and_migrate "/root/$src" "$target" "$desc"
-  done
-}
-
-# 迁移其他重要目录
-migrate_others() {
-  echo_info "=== 迁移其他目录 ==="
-
-  check_and_migrate "/root/ai" "/data/ai" "AI 相关数据"
-  check_and_migrate "/root/.claude" "/data/claude/claude_root" "Claude Code 配置"
-}
+echo ""
+echo "=========================================="
+echo "迁移完成: $migrated 成功, $skipped 跳过"
+echo "=========================================="
+echo ""
 
 # 生成迁移清单
 generate_report() {
-  # 从全局记忆中读取统一文档项目路径
-  local doc_project=$(grep -A1 "^描述" ~/.claude/memory/user_doc_dir.md 2>/dev/null | grep "/root/sh" || echo "/root/sh")
-  [ ! -d "$doc_project" ] && doc_project="/root/sh"
+  # 读取统一文档项目路径
+  local doc_project="/root/sh"
+  if [ -f ~/.claude/memory/user_doc_dir.md ]; then
+    doc_project=$(grep "^路径" ~/.claude/memory/user_doc_dir.md 2>/dev/null | awk '{print $2}')
+    [ -z "$doc_project" ] && doc_project="/root/sh"
+  fi
 
-  # 创建目标目录
   local target_dir="$doc_project/migrated-disk"
   mkdir -p "$target_dir"
 
-  # 生成文件名：机器名-IP-日期-migrated.md
   local hostname=$(hostname)
   local ip_addr=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "unknown")
   local date_str=$(date '+%Y-%m-%d')
@@ -123,94 +107,53 @@ generate_report() {
 
   echo_info "生成迁移清单..."
 
-  cat > "$report_file" << 'HEADER'
-# /root 目录软链接迁移清单
+  cat > "$report_file" << HEADER
+# 磁盘迁移清单
 
 ## 概述
 
-本清单记录 `/root` 目录下所有软链接的迁移信息，将原本占用根分区空间的目录迁移至 `/data` 目录。
+- **迁移时间**: $date_str
+- **主机**: $hostname ($ip_addr)
+- **成功迁移**: $migrated 个目录
+- **跳过**: $skipped 个目录
 
+## 迁移清单
+
+| 序号 | 原始路径 | 目标路径 | 大小 | 状态 |
+|------|----------|----------|------|------|
 HEADER
 
-  echo "**迁移时间**: $(date '+%Y-%m-%d')" >> "$report_file"
-  echo "" >> "$report_file"
-
-  # 统计软链接数量
-  local link_count=$(ls -la /root/ | grep "^l" | wc -l)
-  echo "- **软链接总数**: $link_count" >> "$report_file"
-  echo "" >> "$report_file"
-
-  cat >> "$report_file" << 'TABLE_HEADER'
-## 软链接迁移清单
-
-| 序号 | 原始路径 (/root) | 目标路径 (/data) | 大小 | 说明 |
-|------|------------------|------------------|------|------|
-TABLE_HEADER
-
   local idx=1
-  declare -A links=(
-    ["/root/.npm"]="/data/user-config/.npm:npm 包管理配置及缓存"
-    ["/root/.nvm"]="/data/user-config/.nvm:Node 版本管理器"
-    ["/root/.local"]="/data/user-config/.local:用户本地应用配置"
-    ["/root/.opencode"]="/data/user-config/.opencode:OpenCode 编辑器配置"
-    ["/root/.wdm"]="/data/user-config/.wdm:WebDriver Manager 配置"
-    ["/root/.bun"]="/data/user-config/.bun:Bun runtime 配置"
-    ["/root/.cache"]="/data/user-config/root-cache:用户缓存目录"
-    ["/root/.paddlex"]="/data/cache/.paddlex:PaddleX 机器学习模型"
-    ["/root/venv"]="/data/venvs/root-venv:Python 虚拟环境"
-    ["/root/playwright-venv"]="/data/venvs/playwright-venv:Playwright 测试虚拟环境"
-    ["/root/stock-quant-strategy-venv"]="/data/venvs/stock-quant-strategy-venv:量化交易策略虚拟环境"
-    ["/root/ai"]="/data/ai:AI 相关配置和数据"
-    ["/root/.claude"]="/data/claude/claude_root:Claude Code 配置"
-  )
+  while IFS= read -r source_dir; do
+    [ -z "$source_dir" ] && continue
 
-  for link in "${!links[@]}"; do
-    if [ -L "$link" ]; then
-      local target_desc="${links[$link]}"
-      local target="${target_desc%%:*}"
-      local desc="${target_desc##*:}"
-      local size=$(du -sh "$link" 2>/dev/null | cut -f1 || echo "N/A")
-      printf "| %d | \`%s\` | \`%s\` | %s | %s |\n" \
-        "$idx" "$link" "$target" "$size" "$desc" >> "$report_file"
-      ((idx++))
+    dir_name=$(basename "$source_dir")
+    target_path="$TARGET_DIR/$dir_name"
+    size=$(du -sh "$target_path" 2>/dev/null | cut -f1 || echo "N/A")
+
+    if [ -L "$source_dir" ]; then
+      printf "| %d | \`%s\` | \`%s\` | %s | ✓ 已迁移 |\n" \
+        "$idx" "$source_dir" "$target_path" "$size" >> "$report_file"
+    else
+      printf "| %d | \`%s\` | - | - | 跳过 |\n" \
+        "$idx" "$source_dir" >> "$report_file"
     fi
-  done
+    ((idx++))
+  done < "$SELECTION_FILE"
 
   echo "" >> "$report_file"
-
-  cat >> "$report_file" << 'FOOTER'
-## 注意事项
-
-1. **user-config/** 目录包含重要用户配置，不建议随意清理
-2. **venv** 目录包含 Python 虚拟环境，清理前请确认不再使用
-3. **cache/** 目录包含可重新下载的缓存（如模型、缓存包），可按需清理
-4. 软链接损坏时可使用 `readlink -f /root/<path>` 检查目标是否存在
-FOOTER
+  echo "## 目标目录" >> "$report_file"
+  echo "" >> "$report_file"
+  echo "所有迁移的目录都在 \`$TARGET_DIR/\` 下。" >> "$report_file"
 
   echo_info "清单已生成: $report_file"
 }
 
-# 主函数
-main() {
-  echo "=========================================="
-  echo "磁盘迁移脚本"
-  echo "=========================================="
-  echo ""
+generate_report
 
-  setup_directories
-  migrate_user_config
-  migrate_venvs
-  migrate_cache
-  migrate_others
-  generate_report
+# 清理选择文件
+rm -f "$SELECTION_FILE"
 
-  echo ""
-  echo "=========================================="
-  echo "迁移完成"
-  echo "=========================================="
-  echo ""
-  echo "建议运行验证脚本检查迁移结果:"
-  echo "  bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/verify.sh"
-}
-
-main "$@"
+echo ""
+echo "建议运行验证脚本检查迁移结果:"
+echo "  bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/verify.sh"

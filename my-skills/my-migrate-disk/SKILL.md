@@ -1,220 +1,161 @@
 # My Migrate Disk
 
-将根目录磁盘空间迁移到扩展数据磁盘的技能，通过软链接方式解决根分区空间不足的问题。
+通用的根目录磁盘空间迁移技能，通过软链接方式解决根分区空间不足的问题。支持用户自定义阈值，仅迁移超过阈值的目录。
 
-## 功能概述
+## 核心特性
 
-1. **诊断分析** - 检查磁盘空间使用情况，找出占用空间大的目录
-2. **智能分类** - 区分用户配置（重要）和缓存（可清理）
-3. **安全迁移** - 迁移目录到 /data 并创建软链接
-4. **验证测试** - 验证迁移后所有命令正常工作
-5. **清单生成** - 生成迁移报告文档到统一文档项目
+1. **通用方案** - 不限定特定目录，扫描 /root 下所有子目录
+2. **阈值驱动** - 用户设置阈值大小，仅处理超过阈值的目录
+3. **交互选择** - 显示候选目录列表，用户可选择性迁移
+4. **自动验证** - 迁移后自动验证软链接和命令可用性
+5. **清单生成** - 生成迁移报告到统一文档项目
 
-## 统一文档项目路径的记忆机制
+## 设计原则
 
-迁移清单保存到用户统一文档项目的 `migrated-disk/` 目录，文件名格式：`{主机名}-{IP}-{日期}-migrated.md`
-
-- 统一文档项目路径从全局 memory 中读取（`~/.claude/memory/user_doc_dir.md`）
-- 首次执行时自动使用 `/root/sh` 作为统一文档项目
-- 生成的清单路径：`/root/sh/migrated-disk/{主机名}-{IP}-{日期}-migrated.md`
-
-## 目录分类
-
-### 用户配置目录（重要，不清理）
-
-| 目录 | 说明 |
+| 原则 | 说明 |
 |------|------|
-| `.npm` | npm 包管理配置 |
-| `.nvm` | Node 版本管理器 |
-| `.local` | 用户本地配置 |
-| `.opencode` | OpenCode 配置 |
-| `.wdm` | WebDriverManager |
-| `.bun` | Bun runtime 配置 |
-| `ai` | AI 相关数据 |
-| `venv` | Python 虚拟环境 |
-| `.claude` | Claude Code 配置 |
+| 通用性 | 支持任何 /root 下的子目录，不限定特定目录 |
+| 最小干预 | 低于阈值的目录不处理，减少风险 |
+| 用户控制 | 用户选择要迁移的目录，非全自动 |
+| 可逆性 | 软链接方式，便于回滚 |
 
-### 缓存目录（可清理）
+## 使用流程
 
-| 目录 | 说明 |
-|------|------|
-| `.paddlex` | PaddleX 模型（可重新下载） |
-| `.huggingface_cache` | HuggingFace 缓存 |
-| `.cache` | 通用缓存 |
+### 1. 诊断阶段
 
-### 虚拟环境目录
+运行诊断脚本查看当前磁盘空间和 /root 目录占用：
 
-| 目录 | 说明 |
-|------|------|
-| `venv` | 主 Python 虚拟环境 |
-| `playwright-venv` | Playwright 测试环境 |
-| `stock-quant-strategy-venv` | 量化交易环境 |
+```bash
+bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/diagnose.sh
+```
+
+输出示例：
+```
+=== 根分区空间 ===
+/dev/mapper/ubuntu--vg-ubuntu--lv  9.8G  8.5G  1.3G  87% /
+
+=== /root 目录大小 (TOP 10) ===
+2.0G    /root/.npm
+1.1G    /root/.nvm
+560M    /root/venv
+450M    /root/ai
+...
+```
+
+### 2. 扫描阶段
+
+扫描 /root 下超过指定阈值的目录：
+
+```bash
+bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/scan.sh 100M
+```
+
+参数说明：
+- 阈值格式：`100M`、`1G`、`500K`
+- 默认阈值：100M
+- 跳过已存在的软链接
+
+输出示例：
+```
+=== 超过 100M 的目录 ===
+  2.0G  /root/.npm
+  1.1G  /root/.nvm
+  560M  /root/venv
+  450M  /root/ai
+  ...
+
+请输入要迁移的目录编号（逗号分隔，如 1,3,5），或 'a' 全部迁移，'n' 退出：
+```
+
+### 3. 迁移阶段
+
+根据用户选择执行迁移：
+
+```bash
+bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/migrate.sh
+```
+
+迁移脚本会自动：
+1. 创建 `/data/migrate-root/` 目标目录
+2. 移动选中目录到目标位置
+3. 创建软链接回 /root
+4. 验证软链接有效性
+
+### 4. 验证阶段
+
+验证迁移结果：
+
+```bash
+bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/verify.sh
+```
+
+验证内容：
+- 软链接是否正确
+- 目标目录是否存在
+- 常用命令是否正常
 
 ## 目标目录结构
 
 ```
 /data/
-├── user-config/              # 用户配置数据（重要）
-│   ├── .npm
-│   ├── .nvm
-│   ├── .local
-│   ├── .opencode
-│   ├── .wdm
-│   ├── .bun
-│   └── root-cache/
-├── ai/                       # AI 数据
-├── venvs/                    # Python 虚拟环境
-│   ├── root-venv/
-│   ├── playwright-venv/
-│   └── stock-quant-strategy-venv/
-├── claude/                   # Claude 配置
-├── cache/                    # 缓存（可清理）
-│   ├── .paddlex/
-│   ├── .huggingface_cache/
-│   └── ms-playwright/
-└── logs/                     # 日志
+└── migrate-root/              # 迁移目标根目录
+    ├── .npm                  # 原始 /root/.npm
+    ├── .nvm                  # 原始 /root/.nvm
+    ├── venv                  # 原始 /root/venv
+    └── ...                   # 其他迁移的目录
 ```
 
-## 使用方式
+## 统一文档项目
 
-### 诊断磁盘空间
+迁移清单保存到用户统一文档项目的 `migrated-disk/` 目录：
 
-```bash
-# 检查根分区空间
-df -h /
+- 文件名格式：`{主机名}-{IP}-{日期}-migrated.md`
+- 示例：`aiubuntus1-192.168.40.201-2026-04-27-migrated.md`
+- 统一文档项目路径从 `~/.claude/memory/user_doc_dir.md` 读取
 
-# 检查各目录大小
-du -sh /* 2>/dev/null | sort -hr
+## 脚本说明
 
-# 检查 /root 目录详细占用
-du -sh /root/* 2>/dev/null | sort -hr
-
-# 找出所有软链接
-ls -la /root/ | grep "^l"
-```
-
-### 执行迁移
-
-```bash
-# 1. 创建目标目录结构
-mkdir -p /data/user-config
-mkdir -p /data/venvs
-mkdir -p /data/cache
-
-# 2. 迁移用户配置目录
-mv /root/.npm /data/user-config/ && ln -s /data/user-config/.npm /root/.npm
-mv /root/.nvm /data/user-config/ && ln -s /data/user-config/.nvm /root/.nvm
-mv /root/.local /data/user-config/ && ln -s /data/user-config/.local /root/.local
-mv /root/.opencode /data/user-config/ && ln -s /data/user-config/.opencode /root/.opencode
-mv /root/.wdm /data/user-config/ && ln -s /data/user-config/.wdm /root/.wdm
-mv /root/.bun /data/user-config/ && ln -s /data/user-config/.bun /root/.bun
-
-# 3. 迁移虚拟环境
-mv /root/venv /data/venvs/root-venv && ln -s /data/venvs/root-venv /root/venv
-mv /root/playwright-venv /data/venvs/ && ln -s /data/venvs/playwright-venv /root/playwright-venv
-mv /root/stock-quant-strategy-venv /data/venvs/ && ln -s /data/venvs/stock-quant-strategy-venv /root/stock-quant-strategy-venv
-
-# 4. 迁移缓存目录
-mv /root/.paddlex /data/cache/ && ln -s /data/cache/.paddlex /root/.paddlex
-
-# 5. 迁移 AI 目录
-mv /root/ai /data/ai && ln -s /data/ai /root/ai
-
-# 6. 迁移 Claude 配置
-mkdir -p /data/claude
-mv /root/.claude /data/claude/claude_root && ln -s /data/claude/claude_root /root/.claude
-```
-
-### 验证迁移
-
-```bash
-# 检查所有软链接
-for link in /root/.npm /root/.nvm /root/.local /root/.cache /root/.opencode /root/.paddlex /root/.wdm /root/.bun /root/.claude /root/ai /root/venv /root/playwright-venv /root/stock-quant-strategy-venv; do
-  if [ -e "$link" ]; then
-    echo "✓ $link -> $(readlink $link)"
-  else
-    echo "✗ $link (BROKEN)"
-  fi
-done
-
-# 测试命令
-node --version && npm --version
-python3 --version
-git --version
-```
-
-## 脚本工具
-
-### diagnose.sh - 磁盘诊断
-
-```bash
-#!/bin/bash
-echo "=== 根分区空间 ==="
-df -h /
-
-echo -e "\n=== /root 目录大小 ==="
-du -sh /root/* 2>/dev/null | sort -hr
-
-echo -e "\n=== /root 软链接 ==="
-ls -la /root/ | grep "^l"
-
-echo -e "\n=== /data 目录大小 ==="
-du -sh /data/* 2>/dev/null | sort -hr
-```
-
-### migrate.sh - 批量迁移
-
-```bash
-#!/bin/bash
-# 迁移用户配置
-for item in .npm .nvm .local .opencode .wdm .bun; do
-  if [ -L "/root/$item" ]; then
-    echo "$item 已是软链接，跳过"
-  elif [ -d "/root/$item" ]; then
-    mv "/root/$item" "/data/user-config/$item"
-    ln -s "/data/user-config/$item" "/root/$item"
-    echo "迁移 $item"
-  fi
-done
-```
+| 脚本 | 功能 |
+|------|------|
+| `diagnose.sh` | 诊断磁盘空间，显示根分区和 /root 目录占用 |
+| `scan.sh` | 扫描超过阈值的目录，显示并收集用户选择 |
+| `migrate.sh` | 执行迁移，创建软链接，生成清单 |
+| `verify.sh` | 验证迁移结果，检查软链接和命令 |
 
 ## 注意事项
 
-1. **迁移前备份** - 重要目录迁移前建议备份
-2. **按序迁移** - 建议一个目录一个目录迁移，便于排查问题
-3. **验证测试** - 每次迁移后验证命令是否正常
+1. **建议阈值** - 设为 50M~200M 较为合适，太小无意义，太大可能遗漏重要目录
+2. **保留目录** - 建议保留 `sh`（项目目录）、`.config`（配置）、`.ssh`（密钥）
+3. **验证重要命令** - 迁移后确认 node/npm/python/git 等命令正常
 4. **软链接断裂** - 使用 `readlink -f /root/<path>` 检查目标是否存在
-5. **权限问题** - 确保目标目录权限正确
 
 ## 故障排除
 
 ### 软链接断裂
 
 ```bash
-# 检查软链接状态
+# 检查状态
 ls -la /root/<link>
 
-# 修复软链接
+# 修复
 rm /root/<link>
-ln -s /data/<target> /root/<link>
+ln -s /data/migrate-root/<dir> /root/<dir>
 ```
 
 ### 命令找不到
 
 ```bash
-# 刷新 shell 环境
+# 刷新环境
 source ~/.bashrc
-
-# 或重新登录 shell
 exec $SHELL
 ```
 
-### 权限不足
+### 回滚操作
 
 ```bash
-# 检查目录权限
-ls -la /data/<dir>
+# 移除软链接
+rm /root/<link>
 
-# 修复权限
-sudo chown -R $(whoami):$(whoami) /data/<dir>
+# 移回原目录
+mv /data/migrate-root/<dir> /root/<dir>
 ```

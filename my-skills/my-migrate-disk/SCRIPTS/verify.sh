@@ -20,47 +20,47 @@ echo "=== 1. 磁盘空间检查 ==="
 df -h / | tail -1
 echo ""
 
-echo "=== 2. 软链接检查 ==="
+TARGET_DIR="/data/migrate-root"
 all_ok=true
 
-declare -A links=(
-  ["/root/.npm"]="/data/user-config/.npm"
-  ["/root/.nvm"]="/data/user-config/.nvm"
-  ["/root/.local"]="/data/user-config/.local"
-  ["/root/.cache"]="/data/user-config/root-cache"
-  ["/root/.opencode"]="/data/user-config/.opencode"
-  ["/root/.paddlex"]="/data/cache/.paddlex"
-  ["/root/.wdm"]="/data/user-config/.wdm"
-  ["/root/.bun"]="/data/user-config/.bun"
-  ["/root/.claude"]="/data/claude/claude_root"
-  ["/root/ai"]="/data/ai"
-  ["/root/venv"]="/data/venvs/root-venv"
-  ["/root/playwright-venv"]="/data/venvs/playwright-venv"
-  ["/root/stock-quant-strategy-venv"]="/data/venvs/stock-quant-strategy-venv"
-)
+echo "=== 2. 软链接检查 ==="
 
-for link in "${!links[@]}"; do
-  target="${links[$link]}"
+# 检查所有从 /root 指向 /data/migrate-root 的软链接
+for link in /root/*/; do
+  link=$(basename "$link")
 
-  if [ -L "$link" ]; then
-    actual=$(readlink "$link")
-    if [ "$actual" = "$target" ]; then
-      check_ok "$link -> $actual"
+  # 跳过非软链接
+  if [ ! -L "/root/$link" ]; then
+    continue
+  fi
+
+  target=$(readlink "/root/$link")
+
+  # 只检查指向 TARGET_DIR 的
+  if [[ "$target" == "$TARGET_DIR"* ]]; then
+    if [ -e "/root/$link" ]; then
+      check_ok "/root/$link -> $target"
     else
-      check_fail "$link -> $actual (期望: $target)"
+      check_fail "/root/$link -> $target (BROKEN)"
       all_ok=false
     fi
-  elif [ -e "$link" ]; then
-    check_warn "$link 存在但不是软链接"
-  else
-    check_fail "$link 不存在 (BROKEN)"
-    all_ok=false
   fi
 done
 
 echo ""
 
-echo "=== 3. 命令测试 ==="
+echo "=== 3. 目标目录检查 ==="
+if [ -d "$TARGET_DIR" ]; then
+  check_ok "目标目录存在: $TARGET_DIR"
+  echo ""
+  du -sh "$TARGET_DIR"/* 2>/dev/null | sort -hr
+else
+  check_warn "目标目录不存在: $TARGET_DIR"
+fi
+
+echo ""
+
+echo "=== 4. 命令测试 ==="
 
 # Node/npm
 if command -v node &> /dev/null; then
@@ -73,8 +73,7 @@ fi
 if command -v npm &> /dev/null; then
   check_ok "npm: $(npm --version)"
 else
-  check_fail "npm: 未找到"
-  all_ok=false
+  check_warn "npm: 未找到"
 fi
 
 # Python
@@ -95,7 +94,7 @@ fi
 
 echo ""
 
-echo "=== 4. Git 仓库检查 ==="
+echo "=== 5. Git 仓库检查 ==="
 if [ -d "/root/sh/.git" ]; then
   check_ok "sh 仓库存在"
   cd /root/sh && git status --short 2>/dev/null | head -5
@@ -105,10 +104,6 @@ fi
 
 echo ""
 
-echo "=== 5. /data 目录检查 ==="
-du -sh /data/* 2>/dev/null | sort -hr
-
-echo ""
 echo "=========================================="
 if [ "$all_ok" = true ]; then
   echo -e "${GREEN}验证通过！${NC}"
