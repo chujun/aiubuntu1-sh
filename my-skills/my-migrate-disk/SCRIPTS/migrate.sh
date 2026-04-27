@@ -17,7 +17,7 @@ TARGET_DIR="/data/migrate-root"
 # 检查选择文件
 if [ ! -f "$SELECTION_FILE" ]; then
   echo_error "未找到选择文件，请先运行 scan.sh"
-  echo "示例：bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/scan.sh 100M"
+  echo "示例：bash /root/.claude/skills/my-migrate-disk/SCRIPTS/scan.sh 100M"
   exit 1
 fi
 
@@ -215,4 +215,4 @@ rm -f "$SELECTION_FILE"
 
 echo ""
 echo "建议运行验证脚本检查迁移结果:"
-echo "  bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/verify.sh"
+echo "  bash /root/.claude/skills/my-migrate-disk/SCRIPTS/verify.sh"

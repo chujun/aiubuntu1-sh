@@ -25,13 +25,13 @@
 ### 1. 诊断阶段
 
 ```bash
-bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/diagnose.sh
+bash /root/.claude/skills/my-migrate-disk/SCRIPTS/diagnose.sh
 ```
 
 ### 2. 扫描阶段
 
 ```bash
-bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/scan.sh 100M
+bash /root/.claude/skills/my-migrate-disk/SCRIPTS/scan.sh 100M
 ```
 
 参数说明：
@@ -42,7 +42,7 @@ bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/scan.sh 100M
 ### 3. 迁移阶段
 
 ```bash
-bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/migrate.sh
+bash /root/.claude/skills/my-migrate-disk/SCRIPTS/migrate.sh
 ```
 
 迁移脚本会自动：
@@ -59,13 +59,13 @@ bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/migrate.sh
 ### 4. 验证阶段
 
 ```bash
-bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/verify.sh
+bash /root/.claude/skills/my-migrate-disk/SCRIPTS/verify.sh
 ```
 
 ### 5. 回滚（如需）
 
 ```bash
-bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/rollback.sh
+bash /root/.claude/skills/my-migrate-disk/SCRIPTS/rollback.sh
 ```
 
 支持：
@@ -116,7 +116,7 @@ bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/rollback.sh
 ls -la /root/<link>
 
 # 或运行回滚脚本选择修复断裂链接
-bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/rollback.sh
+bash /root/.claude/skills/my-migrate-disk/SCRIPTS/rollback.sh
 # 选择 'b' 修复断裂的软链接
 ```
 
