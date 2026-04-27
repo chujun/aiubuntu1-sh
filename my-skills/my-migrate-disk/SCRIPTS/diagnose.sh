@@ -32,7 +32,7 @@ du -sh /data/* 2>/dev/null | sort -hr
 echo ""
 
 echo "=== 7. 可清理的缓存目录 ==="
-for cache_dir in /data/cache /data/.cache-root 2>/dev/null; do
+for cache_dir in /data/cache /data/.cache-root; do
   if [ -d "$cache_dir" ]; then
     size=$(du -sh "$cache_dir" 2>/dev/null | cut -f1)
     echo "  $cache_dir: $size"

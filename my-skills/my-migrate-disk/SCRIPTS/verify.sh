@@ -25,27 +25,31 @@ all_ok=true
 
 echo "=== 2. 软链接检查 ==="
 
-# 检查所有从 /root 指向 /data/migrate-root 的软链接
+# 检查所有指向 /data/migrate-root 的软链接
+link_found=false
 for link in /root/*/; do
-  link=$(basename "$link")
+  link_name=$(basename "$link")
 
   # 跳过非软链接
-  if [ ! -L "/root/$link" ]; then
-    continue
-  fi
+  [ ! -L "$link" ] && continue
 
-  target=$(readlink "/root/$link")
+  target=$(readlink "$link")
 
   # 只检查指向 TARGET_DIR 的
   if [[ "$target" == "$TARGET_DIR"* ]]; then
-    if [ -e "/root/$link" ]; then
-      check_ok "/root/$link -> $target"
+    link_found=true
+    if [ -e "$link" ]; then
+      check_ok "/root/$link_name -> $target"
     else
-      check_fail "/root/$link -> $target (BROKEN)"
+      check_fail "/root/$link_name -> $target (BROKEN)"
       all_ok=false
     fi
   fi
 done
+
+if [ "$link_found" = false ]; then
+  check_warn "没有找到指向 $TARGET_DIR 的软链接"
+fi
 
 echo ""
 
@@ -104,6 +108,26 @@ fi
 
 echo ""
 
+echo "=== 6. 其他软链接检查 ==="
+for link in /root/.*/; do
+  link_name=$(basename "$link")
+
+  # 跳过 . 和 ..
+  [ "$link_name" = "." ] || [ "$link_name" = ".." ] && continue
+
+  [ ! -L "$link" ] && continue
+
+  target=$(readlink "$link")
+
+  # 只显示，不影响整体状态
+  if [ -e "$link" ]; then
+    echo -e "  ${GREEN}✓${NC} /root/$link_name -> $target"
+  else
+    echo -e "  ${RED}✗${NC} /root/$link_name -> $target (BROKEN)"
+  fi
+done
+
+echo ""
 echo "=========================================="
 if [ "$all_ok" = true ]; then
   echo -e "${GREEN}验证通过！${NC}"

@@ -15,24 +15,56 @@ echo "目录扫描工具"
 echo "=========================================="
 echo ""
 
-# 解析阈值（支持 M, G, K 后缀）
-parse_size() {
+# 纯 bash 解析阈值（避免 bc 依赖）
+parse_size_to_bytes() {
   local size="$1"
   local num="${size%[MGKmgk]*}"
   local unit="${size##*[0-9]}"
+
+  # 去除小数点，转为整数计算
+  num=$(echo "$num" | tr -d '.')
 
   case "$unit" in
     G|g) echo $((num * 1024 * 1024)) ;;
     M|m) echo $((num * 1024)) ;;
     K|k) echo $num ;;
-    *) echo $num ;;
+    *)   echo $num ;;
   esac
 }
 
-threshold_bytes=$(parse_size "$THRESHOLD")
+# 解析目录大小（如 "2.3G" -> 2411724, "500M" -> 512000）
+parse_dir_size() {
+  local size="$1"
+  local num="${size%[KMG]}"
+  local unit="${size#[0-9.]*}"
+
+  # 处理小数，转为整数（放大1000倍避免浮点）
+  local int_num=$(echo "$num" | tr -d '.')
+
+  case "$unit" in
+    G)
+      # G 单位：int_num * 1024 * 1024
+      echo $((int_num * 1024))
+      ;;
+    M)
+      # M 单位：int_num * 1024
+      echo $int_num
+      ;;
+    K)
+      # K 单位：直接返回
+      echo $((int_num / 1000))
+      ;;
+    *)
+      # 无单位，假设是 KB
+      echo $((int_num / 1000))
+      ;;
+  esac
+}
+
+threshold_bytes=$(parse_size_to_bytes "$THRESHOLD")
 echo "阈值: $THRESHOLD ($threshold_bytes KB)"
 
-# 扫描 /root 下的目录（排除软链接和特殊目录）
+# 扫描 /root 下的目录
 echo ""
 echo "=== 超过阈值的目录 ==="
 echo ""
@@ -42,41 +74,29 @@ declare -a candidates
 declare -a candidate_sizes
 declare -a candidate_names
 
+# 排除的目录模式
+exclude_patterns="^\.$|^\.\.$|^\.config$|^\.ssh$|^\.pki$|^\.mozilla$|^\.modelscope$|^sh$|^cj_test$|^Downloads$"
+
 while IFS= read -r line; do
+  [ -z "$line" ] && continue
+
   size=$(echo "$line" | awk '{print $1}')
   dir=$(echo "$line" | awk '{print $2}')
 
-  # 排除已经是软链接的目录
-  if [ -L "$dir" ]; then
-    continue
-  fi
+  # 排除软链接
+  [ -L "$dir" ] && continue
+  # 排除非目录
+  [ ! -d "$dir" ] && continue
 
-  # 排除不是目录的
-  if [ ! -d "$dir" ]; then
-    continue
-  fi
-
-  # 排除系统目录
+  # 排除模式匹配
   basename_dir=$(basename "$dir")
-  case "$basename_dir" in
-    .|..|.config|.ssh|.pki|.mozilla|.modelscope|sh|cj_test|Downloads)
-      continue
-      ;;
-  esac
+  echo "$basename_dir" | grep -Eq "$exclude_patterns" && continue
 
-  # 解析大小
-  size_num="${size%[KMG]}"
-  size_unit="${size#[0-9.]}"
-
-  case "$size_unit" in
-    G) size_bytes=$(echo "$size_num * 1024 * 1024" | bc 2>/dev/null | cut -d. -f1) ;;
-    M) size_bytes=$(echo "$size_num * 1024" | bc 2>/dev/null | cut -d. -f1) ;;
-    K) size_bytes=$(echo "$size_num" | cut -d. -f1) ;;
-    *) size_bytes=0 ;;
-  esac
+  # 解析目录大小（KB）
+  size_kb=$(parse_dir_size "$size")
 
   # 比较阈值
-  if [ "$size_bytes" -ge "$threshold_bytes" ]; then
+  if [ "$size_kb" -ge "$threshold_bytes" ]; then
     ((idx++))
     candidates+=("$dir")
     candidate_sizes+=("$size")
@@ -111,13 +131,11 @@ if [ "$choice" = "n" ] || [ "$choice" = "N" ]; then
 fi
 
 if [ "$choice" = "a" ] || [ "$choice" = "A" ]; then
-  # 全部选择
   for dir in "${candidates[@]}"; do
     echo "$dir" >> "$SELECTION_FILE"
   done
   echo "已选择全部 $idx 个目录"
 else
-  # 解析编号
   IFS=',' read -ra nums <<< "$choice"
   for num in "${nums[@]}"; do
     num=$(echo "$num" | tr -d ' ')

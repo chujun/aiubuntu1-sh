@@ -7,8 +7,9 @@
 1. **通用方案** - 不限定特定目录，扫描 /root 下所有子目录
 2. **阈值驱动** - 用户设置阈值大小，仅处理超过阈值的目录
 3. **交互选择** - 显示候选目录列表，用户可选择性迁移
-4. **自动验证** - 迁移后自动验证软链接和命令可用性
-5. **清单生成** - 生成迁移报告到统一文档项目
+4. **冲突处理** - 同名目录存在时由用户决策处理方式
+5. **自动验证** - 迁移后自动验证软链接和命令可用性
+6. **回滚支持** - 支持将迁移的目录回滚到原位置
 
 ## 设计原则
 
@@ -23,28 +24,11 @@
 
 ### 1. 诊断阶段
 
-运行诊断脚本查看当前磁盘空间和 /root 目录占用：
-
 ```bash
 bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/diagnose.sh
 ```
 
-输出示例：
-```
-=== 根分区空间 ===
-/dev/mapper/ubuntu--vg-ubuntu--lv  9.8G  8.5G  1.3G  87% /
-
-=== /root 目录大小 (TOP 10) ===
-2.0G    /root/.npm
-1.1G    /root/.nvm
-560M    /root/venv
-450M    /root/ai
-...
-```
-
 ### 2. 扫描阶段
-
-扫描 /root 下超过指定阈值的目录：
 
 ```bash
 bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/scan.sh 100M
@@ -55,21 +39,7 @@ bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/scan.sh 100M
 - 默认阈值：100M
 - 跳过已存在的软链接
 
-输出示例：
-```
-=== 超过 100M 的目录 ===
-  2.0G  /root/.npm
-  1.1G  /root/.nvm
-  560M  /root/venv
-  450M  /root/ai
-  ...
-
-请输入要迁移的目录编号（逗号分隔，如 1,3,5），或 'a' 全部迁移，'n' 退出：
-```
-
 ### 3. 迁移阶段
-
-根据用户选择执行迁移：
 
 ```bash
 bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/migrate.sh
@@ -81,28 +51,35 @@ bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/migrate.sh
 3. 创建软链接回 /root
 4. 验证软链接有效性
 
-### 4. 验证阶段
+**冲突处理**（同名目录已存在时）：
+- 选项 1: 跳过
+- 选项 2: 备份后覆盖（重命名原目录）
+- 选项 3: 合并目录内容
 
-验证迁移结果：
+### 4. 验证阶段
 
 ```bash
 bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/verify.sh
 ```
 
-验证内容：
-- 软链接是否正确
-- 目标目录是否存在
-- 常用命令是否正常
+### 5. 回滚（如需）
+
+```bash
+bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/rollback.sh
+```
+
+支持：
+- 回滚单个目录
+- 回滚全部目录
+- 修复断裂的软链接
 
 ## 目标目录结构
 
 ```
 /data/
-└── migrate-root/              # 迁移目标根目录
-    ├── .npm                  # 原始 /root/.npm
-    ├── .nvm                  # 原始 /root/.nvm
-    ├── venv                  # 原始 /root/venv
-    └── ...                   # 其他迁移的目录
+└── migrate-root/              # 统一迁移目标目录
+    ├── xxx                    # 迁移的目录
+    └── ...
 ```
 
 ## 统一文档项目
@@ -119,8 +96,9 @@ bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/verify.sh
 |------|------|
 | `diagnose.sh` | 诊断磁盘空间，显示根分区和 /root 目录占用 |
 | `scan.sh` | 扫描超过阈值的目录，显示并收集用户选择 |
-| `migrate.sh` | 执行迁移，创建软链接，生成清单 |
+| `migrate.sh` | 执行迁移，创建软链接，处理冲突，生成清单 |
 | `verify.sh` | 验证迁移结果，检查软链接和命令 |
+| `rollback.sh` | 回滚迁移的目录，支持选择性回滚 |
 
 ## 注意事项
 
@@ -137,9 +115,9 @@ bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/verify.sh
 # 检查状态
 ls -la /root/<link>
 
-# 修复
-rm /root/<link>
-ln -s /data/migrate-root/<dir> /root/<dir>
+# 或运行回滚脚本选择修复断裂链接
+bash /data/claude/claude_root/skills/my-migrate-disk/SCRIPTS/rollback.sh
+# 选择 'b' 修复断裂的软链接
 ```
 
 ### 命令找不到
@@ -150,12 +128,12 @@ source ~/.bashrc
 exec $SHELL
 ```
 
-### 回滚操作
+### 冲突处理示例
 
-```bash
-# 移除软链接
-rm /root/<link>
-
-# 移回原目录
-mv /data/migrate-root/<dir> /root/<dir>
+```
+目标目录已存在: /data/migrate-root/xxx
+请选择操作：
+  1. 跳过此目录
+  2. 备份后覆盖（将原目录重命名为 xxx.bak.20260427）
+  3. 合并目录（将源目录内容移动到目标目录）
 ```
