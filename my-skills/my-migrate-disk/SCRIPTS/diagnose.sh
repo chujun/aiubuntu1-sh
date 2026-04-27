@@ -1,6 +1,11 @@
 #!/bin/bash
 # 磁盘诊断脚本
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+
+log_silent "=== diagnose.sh 启动 ==="
+
 echo "=========================================="
 echo "磁盘空间诊断报告"
 echo "=========================================="
@@ -43,3 +48,5 @@ echo ""
 echo "=========================================="
 echo "诊断完成"
 echo "=========================================="
+
+log_silent "=== diagnose.sh 完成 ==="

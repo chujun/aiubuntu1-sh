@@ -1,11 +1,8 @@
 #!/bin/bash
 # 扫描 /root 下超过指定阈值的目录
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
 
 # 默认阈值 100M
 THRESHOLD=${1:-100M}
@@ -15,56 +12,29 @@ echo "目录扫描工具"
 echo "=========================================="
 echo ""
 
-# 纯 bash 解析阈值（避免 bc 依赖）
-parse_size_to_bytes() {
+# 解析阈值为 KB
+parse_threshold_to_kb() {
   local size="$1"
   local num="${size%[MGKmgk]*}"
-  local unit="${size##*[0-9]}"
+  local unit="${size##*[0-9.]}"
 
-  # 去除小数点，转为整数计算
-  num=$(echo "$num" | tr -d '.')
-
+  # 处理小数：用 awk 进行浮点运算
   case "$unit" in
-    G|g) echo $((num * 1024 * 1024)) ;;
-    M|m) echo $((num * 1024)) ;;
-    K|k) echo $num ;;
-    *)   echo $num ;;
+    G|g) awk "BEGIN {printf \"%d\", $num * 1024 * 1024}" ;;
+    M|m) awk "BEGIN {printf \"%d\", $num * 1024}" ;;
+    K|k) awk "BEGIN {printf \"%d\", $num}" ;;
+    *)   awk "BEGIN {printf \"%d\", $num}" ;;
   esac
 }
 
-# 解析目录大小（如 "2.3G" -> 2411724, "500M" -> 512000）
-parse_dir_size() {
-  local size="$1"
-  local num="${size%[KMG]}"
-  local unit="${size#[0-9.]*}"
+threshold_kb=$(parse_threshold_to_kb "$THRESHOLD")
+echo "阈值: $THRESHOLD ($threshold_kb KB)"
+log_silent "=== scan.sh 启动 === 阈值: $THRESHOLD ($threshold_kb KB)"
 
-  # 处理小数，转为整数（放大1000倍避免浮点）
-  local int_num=$(echo "$num" | tr -d '.')
+# 加载排除列表
+exclude_patterns=$(load_exclude_patterns)
+log_silent "排除规则: $exclude_patterns"
 
-  case "$unit" in
-    G)
-      # G 单位：int_num * 1024 * 1024
-      echo $((int_num * 1024))
-      ;;
-    M)
-      # M 单位：int_num * 1024
-      echo $int_num
-      ;;
-    K)
-      # K 单位：直接返回
-      echo $((int_num / 1000))
-      ;;
-    *)
-      # 无单位，假设是 KB
-      echo $((int_num / 1000))
-      ;;
-  esac
-}
-
-threshold_bytes=$(parse_size_to_bytes "$THRESHOLD")
-echo "阈值: $THRESHOLD ($threshold_bytes KB)"
-
-# 扫描 /root 下的目录
 echo ""
 echo "=== 超过阈值的目录 ==="
 echo ""
@@ -72,16 +42,10 @@ echo ""
 idx=0
 declare -a candidates
 declare -a candidate_sizes
-declare -a candidate_names
 
-# 排除的目录模式
-exclude_patterns="^\.$|^\.\.$|^\.config$|^\.ssh$|^\.pki$|^\.mozilla$|^\.modelscope$|^sh$|^cj_test$|^Downloads$"
-
-while IFS= read -r line; do
-  [ -z "$line" ] && continue
-
-  size=$(echo "$line" | awk '{print $1}')
-  dir=$(echo "$line" | awk '{print $2}')
+# 使用 du -sk 直接获取 KB 值，避免单位解析误差
+while IFS=$'\t' read -r size_kb dir; do
+  [ -z "$dir" ] && continue
 
   # 排除软链接
   [ -L "$dir" ] && continue
@@ -92,21 +56,20 @@ while IFS= read -r line; do
   basename_dir=$(basename "$dir")
   echo "$basename_dir" | grep -Eq "$exclude_patterns" && continue
 
-  # 解析目录大小（KB）
-  size_kb=$(parse_dir_size "$size")
-
-  # 比较阈值
-  if [ "$size_kb" -ge "$threshold_bytes" ]; then
-    ((idx++))
+  # 直接用 KB 值比较阈值
+  if [ "$size_kb" -ge "$threshold_kb" ]; then
+    idx=$((idx + 1))
     candidates+=("$dir")
-    candidate_sizes+=("$size")
-    candidate_names+=("$basename_dir")
-    echo -e "${GREEN}$idx${NC}. ${size}\t$dir"
+    # 获取人类可读大小用于显示
+    human_size=$(du -sh "$dir" 2>/dev/null | cut -f1)
+    candidate_sizes+=("$human_size")
+    echo -e "${GREEN}$idx${NC}. ${human_size}\t$dir"
   fi
-done < <(du -sh /root/* /root/.* 2>/dev/null | grep -v "/root/\.$" | sort -hr)
+done < <(du -sk /root/* /root/.* 2>/dev/null | sort -k1 -nr)
 
 if [ $idx -eq 0 ]; then
   echo "没有超过阈值的目录"
+  log_silent "扫描完成：没有超过阈值的目录"
   exit 0
 fi
 
@@ -115,11 +78,11 @@ echo "=========================================="
 echo "找到 $idx 个目录超过阈值"
 echo ""
 echo -e "${BLUE}请选择要迁移的目录：${NC}"
-echo "  输入编号（逗号分隔）：如 1,3,5"
+echo "  输入编号（逗号分隔或范围）：如 1,3,5 或 1-3,5"
 echo "  输入 'a' 全部迁移"
 echo "  输入 'n' 退出"
 echo -n "选择: "
-read choice
+read -r choice
 
 # 保存选择到临时文件供 migrate.sh 使用
 SELECTION_FILE="/tmp/migrate_selection.txt"
@@ -127,24 +90,48 @@ SELECTION_FILE="/tmp/migrate_selection.txt"
 
 if [ "$choice" = "n" ] || [ "$choice" = "N" ]; then
   echo "退出"
+  log_silent "用户取消扫描选择"
   exit 0
 fi
+
+# 解析选择（支持范围语法 1-3,5,7-9）
+parse_selection() {
+  local input="$1"
+  local max="$2"
+  local -a result=()
+
+  IFS=',' read -ra parts <<< "$input"
+  for part in "${parts[@]}"; do
+    part=$(echo "$part" | tr -d ' ')
+    if [[ "$part" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+      local start="${BASH_REMATCH[1]}"
+      local end="${BASH_REMATCH[2]}"
+      for ((i=start; i<=end && i<=max; i++)); do
+        [ "$i" -ge 1 ] && result+=("$i")
+      done
+    elif [[ "$part" =~ ^[0-9]+$ ]]; then
+      [ "$part" -ge 1 ] && [ "$part" -le "$max" ] && result+=("$part")
+    fi
+  done
+
+  echo "${result[@]}"
+}
 
 if [ "$choice" = "a" ] || [ "$choice" = "A" ]; then
   for dir in "${candidates[@]}"; do
     echo "$dir" >> "$SELECTION_FILE"
   done
   echo "已选择全部 $idx 个目录"
+  log_silent "用户选择全部 $idx 个目录"
 else
-  IFS=',' read -ra nums <<< "$choice"
-  for num in "${nums[@]}"; do
-    num=$(echo "$num" | tr -d ' ')
-    if [ "$num" -ge 1 ] && [ "$num" -le $idx ]; then
-      idx_minus=$((num - 1))
-      echo "${candidates[$idx_minus]}" >> "$SELECTION_FILE"
-    fi
+  selected_nums=$(parse_selection "$choice" "$idx")
+  for num in $selected_nums; do
+    idx_minus=$((num - 1))
+    echo "${candidates[$idx_minus]}" >> "$SELECTION_FILE"
   done
-  echo "已选择 $(cat "$SELECTION_FILE" | wc -l) 个目录"
+  selected_count=$(wc -l < "$SELECTION_FILE")
+  echo "已选择 $selected_count 个目录"
+  log_silent "用户选择 $selected_count 个目录: $choice"
 fi
 
 echo ""
