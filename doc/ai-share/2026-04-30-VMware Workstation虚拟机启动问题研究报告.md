@@ -102,7 +102,30 @@ sc qc VMAuthdService
 # DEPENDENCIES: vmx86, winmgmt
 ```
 
-**分析：** VMAuthdService 依赖的 `vmx86` 驱动正常运行（内核驱动状态 4 RUNNING），但 `vmware-authd.exe` 进程未正常监听 902 端口，导致 vmrun 无法通过 RPC 与之通信。
+**进一步排查 — 端口监听情况：**
+
+```bash
+# 检查 vmware-authd.exe 实际监听的端口
+powershell -Command "Get-NetTCPConnection -OwningProcess 3196 | Select-Object LocalPort, State"
+
+# 输出：
+# LocalPort  State
+# ---------  -----
+#      913  Listen
+#      903  Listen
+```
+
+**关键发现：** `vmware-authd.exe` (PID 3196) 正在运行，但**监听在 903 和 913 端口**，而**不是标准的 902 端口**：
+
+| 端口 | 状态 | 说明 |
+|------|------|------|
+| **902** | ❌ 未监听 | **标准 VMAuthdService 端口** |
+| 903 | ✅ 监听中 | VM remote console |
+| 913 | ✅ 监听中 | 未知用途 |
+
+**分析：** `vmware-authd.exe` 进程正常运行，但绑定到了错误的端口（903/913 而非 902）。vmrun 默认连接 902 端口进行 RPC 通信，因此连接失败导致静默失败。这是 **VMware 服务配置异常**，与奇安信软件无直接因果关系（奇安信日志仅记录了操作，未记录结果，无法证明阻止）。
+
+**分析：** VMAuthdService 依赖的 `vmx86` 驱动正常运行（内核驱动状态 4 RUNNING），但 `vmware-authd.exe` 进程监听在错误端口（903/913 而非 902），导致 vmrun 无法通过 RPC 与之通信。
 
 ---
 
@@ -385,9 +408,10 @@ rm -rf /d/repository/vmware/*/*.lck
 ## 九、注意事项
 
 1. **锁定文件** - 删除前确认没有 VMware 进程正在运行
-2. **端口 902** - VMAuthdService 未监听 902 端口是 vmrun 失败的根本原因
+2. **端口 902 vs 903/913** - `vmware-authd.exe` 监听在 903/913 而非标准 902 端口，这是 vmrun 失败的根本原因
 3. **直接运行 vmware-vmx** - 会因无客户端连接而自动退出，这是正常行为
 4. **poweredOff 状态** - VMware UI 打开虚拟机后显示此状态，需要手动点击 Power On
+5. **奇安信日志说明** - 日志仅记录操作，未记录结果（阻止/允许），无法证明操作被阻止
 
 ---
 
@@ -396,9 +420,10 @@ rm -rf /d/repository/vmware/*/*.lck
 | 难点 | 描述 | 解决方案 |
 |------|------|---------|
 | **vmrun 静默失败** | `vmrun start` 没有任何错误输出，难以定位问题 | 通过日志和端口检查逐步排查 |
-| **902 端口未监听** | VMAuthdService 进程存在但不监听端口 | 服务可能需要重装或修复 |
+| **端口监听错误** | `vmware-authd.exe` 监听 903/913 而非标准 902 端口 | 服务配置异常，需重装 VMware |
 | **UI 无响应** | VMware UI 点击 Power On 后无任何反应 | 使用 vmrun 命令行或直接运行 vmware.exe |
 | **进程与端口关联** | 理解 VMAuthdService、vmrun、vmware-vmx 之间的关系 | 参考架构图和启动流程 |
+| **奇安信日志解读** | 日志无结果列，无法判断操作是否被阻止 | 需要结合注册表实际状态和端口监听情况判断 |
 
 ---
 
@@ -407,14 +432,15 @@ rm -rf /d/repository/vmware/*/*.lck
 | 项目 | 状态 |
 |------|------|
 | **VMware NAT Service** | ✅ 已恢复正常 |
-| **VMAuthdService 进程** | ✅ 运行中 |
-| **VMAuthdService 902 端口** | ❌ 未监听 |
+| **VMAuthdService 进程** | ✅ 运行中 (PID 3196) |
+| **902 端口** | ❌ 未监听 |
+| **903/913 端口** | ✅ 监听中（vmware-authd 实际监听端口） |
 | **vmrun list** | ✅ 正常 |
-| **vmrun start** | ❌ 静默失败 |
+| **vmrun start** | ❌ 静默失败（连接 902 失败） |
 | **VMware UI 打开虚拟机** | ✅ 成功（需手动 Power On） |
 | **虚拟机电源状态** | poweredOff（需手动启动） |
 
-**核心结论：** VMAuthdService 的 902 端口未监听导致 vmrun 无法通过 RPC 启动虚拟机，但 VMware UI 可以打开虚拟机文件，用户需要手动点击 Power On 按钮来启动虚拟机。
+**核心结论：** `vmware-authd.exe` 监听在 903/913 端口而非标准的 902 端口，导致 vmrun 无法通过 RPC 启动虚拟机。这是 VMware 服务配置异常，与奇安信软件无直接因果关系（奇安信日志仅记录操作，无法证明阻止）。
 
 ---
 
