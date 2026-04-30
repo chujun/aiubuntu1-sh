@@ -45,13 +45,13 @@ C:\Program Files (x86)\VMware\ (目录修改时间: 2026-04-29 17:18)
 
 ### 背景上下文
 
-#### 软件安装路径
+#### 原软件安装路径（已卸载）
 
-| 软件 | 安装路径 | 版本 |
+| 软件 | 原安装路径 | 状态 |
 |------|---------|------|
-| VMware Workstation Pro | `C:\Program Files (x86)\VMware\VMware Workstation\` | 25.0.1 (25H2u1) |
-| 奇安信 QAX | `C:\Program Files (x86)\Qianxin\Tianqing\` | — |
-| 奇安信引擎管理 | `C:\Program Files (x86)\Qianxin\ifl\` | — |
+| VMware Workstation Pro | `C:\Program Files (x86)\VMware\VMware Workstation\` | 已卸载重装 |
+| 奇安信 QAX | `C:\Program Files (x86)\Qianxin\Tianqing\` | ✅ 已卸载 |
+| 腾讯电脑管家 | `D:\Program Files\tengxunguanjia\QQPCMgr\` | ✅ 已卸载 |
 
 #### 虚拟机存储路径
 
@@ -60,13 +60,6 @@ C:\Program Files (x86)\VMware\ (目录修改时间: 2026-04-29 17:18)
 | aiubuntus1 | `D:\repository\vmware\aiubuntus1\` | Ubuntu 虚拟机 |
 | k8s-control1 | `D:\repository\vmware\k8s-control1\` | K8s 控制节点（快照链已合并） |
 | aiubuntus1 - 副本 | `D:\repository\vmware\aiubuntus1 - 副本\` | 备份副本 |
-
-#### 奇安信 QAX 服务信息
-
-| 服务名 | 显示名 | 状态 | 启动类型 |
-|--------|--------|------|----------|
-| QAXClientSvc | QI-ANXIN Tianqing Client Service | Running | Auto |
-| QaxEngManager | QaxEngManager | Running | Auto |
 
 #### 核心发现
 
@@ -86,15 +79,14 @@ C:\Program Files (x86)\VMware\ (目录修改时间: 2026-04-29 17:18)
 
 **结论：** 这不是"清理不彻底"的问题，而是**存在持续性破坏因素**。腾讯电脑管家和奇安信 QAX 在 4/28 同一天安装，两者都可能修改了影响 VMware 运行的系统配置（如服务启动项、注册表权限等）。
 
-**⚠️ 重要约束：奇安信软件无法卸载（公司强制要求），腾讯电脑管家可以卸载。**
+**⚠️ 当前状态：两个安全软件均已卸载**
 
-**解决方案建议（按优先级）：**
+| 软件 | 安装时间 | 卸载状态 |
+|------|---------|---------|
+| 腾讯电脑管家 | 2026-04-28 09:55 | ✅ 已卸载 |
+| 奇安信 QAX | 2026-04-28 10:31-10:32 | ✅ 已卸载 |
 
-1. **卸载腾讯电脑管家**（可操作）：腾讯电脑管家是导致 VMware 问题的头号嫌疑，卸载后观察 VMware 是否恢复
-
-2. **禁用奇安信部分功能**（如无法卸载）：联系奇安信技术支持，说明 VMware 兼容性问题，请求将 VMware 加入白名单或禁用相关注册表监控
-
-3. **虚拟机迁移方案**：如奇安信无法配置，考虑迁移到 ESXi 或 Hyper-V 等不受影响的虚拟化平台
+**背景总结：** 4/28 同一天安装了两个安全软件并对系统进行了大量配置修改，导致 VMware 出现问题。两个软件均已卸载，但 VMware 问题在卸载后仍然存在，说明修改的系统配置项（如注册表权限、服务启动项等）可能已持久化，需要进一步排查是哪些具体配置项被修改导致 VMware 故障。
 
 ---
 
