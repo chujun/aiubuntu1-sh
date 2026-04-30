@@ -328,26 +328,56 @@ sequenceDiagram
 
 **如需彻底重装 VMware，官方提供以下清理方式：**
 
-#### A. 自动清理（安装程序参数）
+#### A. 官方标准卸载（25H2u1 最新版）
+
+**官方文档：** https://techdocs.broadcom.com/us/en/vmware-cis/desktop-hypervisors/workstation-pro/25H2/using-vmware-workstation-pro/installing-and-using-workstation-pro/uninstalling-workstation-pro/uninstall-workstation-pro-from-a-windows-host.html
+
+**卸载步骤：**
+
+1. 以管理员身份登录 Windows
+2. 关闭所有 VMware 应用程序
+3. 双击 VMware Workstation 安装程序 `VMware-workstation-xxxx-xxxxxxx.exe`
+4. 在欢迎屏幕上点击 **Next**
+5. 选择 **Remove**（可选择保留配置文件）
+6. 点击 **Next** 开始卸载
+
+**官方说明：**
+- 卸载过程会移除 VMware Workstation Pro 和所有内置功能
+- 可选择保留配置文件（`.vmx`, `.vmxf`, `.vmdk` 等虚拟机文件不受影响）
+- 卸载后虚拟机文件仍可手动删除或保留供重新安装后使用
+
+---
+
+#### B. 安装程序清理参数（7.x - 14.x）
 
 ```bash
-# Workstation 7.x - 14.x
+# Workstation 7.x - 14.x 使用 /clean 参数
 VMware-workstation-full-xx.x.x.exe /clean
 
 # Workstation 5.x 或 6.x
 installer.exe /c
 ```
 
-#### B. 手动清理步骤
+---
 
-**停止服务：**
-- VMware Authorization Service
-- VMware DHCP Service
-- VMware NAT Service
-- VMware USB Arbitration Service
-- VMware Workstation Server
+#### C. 手动彻底清理步骤（残留项清除）
 
-**删除文件夹：**
+如果安装程序卸载不完整，可手动清理以下残留项：
+
+**停止并删除服务：**
+```powershell
+# 停止所有 VMware 服务
+Stop-Service -Name "VMware*" -Force -ErrorAction SilentlyContinue
+
+# 删除 VMware 服务（以管理员身份运行命令提示符）
+sc delete VMAuthdService
+sc delete "VMware NAT Service"
+sc delete VMnetDHCP
+sc delete "VMware USB Arbitration Service"
+sc delete "VMware Workstation Server"
+```
+
+**删除安装目录和配置文件：**
 - `C:\Program Files\VMware`（或 `C:\Program Files (x86)\VMware`）
 - `C:\Users\<username>\AppData\Local\VMware\`
 - `C:\Users\<username>\AppData\Roaming\VMware\`
@@ -358,7 +388,10 @@ installer.exe /c
 - `HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\VMware, Inc.`
 - `HKEY_CURRENT_USER\Software\VMware, Inc.`
 
-**⚠️ 重要警告：** 16.2.0+ 版本升级后，Shared VM 功能不可逆地移除。如果此功能对您的工作流至关重要，需要保持在旧版本或迁移到专用 ESXi 主机。
+**⚠️ 重要警告：**
+- 16.2.0+ 版本升级后，Shared VM 功能不可逆地移除
+- 如果此功能对您的工作流至关重要，需要保持在旧版本或迁移到专用 ESXi 主机
+- 手动清理注册表前建议备份，注册表操作有风险
 
 ---
 
