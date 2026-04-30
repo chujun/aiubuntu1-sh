@@ -27,6 +27,7 @@
 | 2026-04-30 08:38 ~ 14:25 | 问题再次出现，触发本次排查 | 第二次完整清理 + 官方文档获取 |
 | **2026-04-30 14:52** | 腾讯电脑管家 + 奇安信 QAX 卸载 | 两个安全软件均已卸载 |
 | **2026-04-30 14:53 之后** | 使用 VMware Workstation 安装程序修复 VMware | 运行 exe 重新修复 VMware 安装 |
+| **2026-04-30 15:00** | VMware Workstation 启动 | 点击虚拟机弹出授权服务错误 |
 
 **关键时间节点证据：**
 
@@ -288,6 +289,95 @@ tasklist | grep vmware
 
 ---
 
+#### 2.2.6 14:53 后 VMware 修复安装 - 授权服务错误
+
+**背景：** 14:52 卸载了两个安全软件，14:53 使用 VMware 安装程序 exe 修复了 VMware 安装。
+
+**新错误现象：** 点击虚拟机启动后，弹出错误对话框：
+
+![VMware 授权服务错误](2026-04-30-vmware-auth-error.png)
+
+**错误信息：** "授权服务没有运行"
+
+**服务状态检查：**
+
+```bash
+# VMAuthdService 服务状态
+sc query VMAuthdService
+# 输出：
+# STATE: 4 RUNNING (STOPPABLE, NOT_PAUSABLE, IGNORES_SHUTDOWN)
+# WIN32_EXIT_CODE: 0 (0x0)
+
+# 服务依赖关系
+# DEPENDENCIES: winmgmt, vmx86
+```
+
+**服务配置：**
+
+| 配置项 | 值 |
+|--------|-----|
+| START_TYPE | 2 (AUTO_START) ✅ |
+| BINARY_PATH_NAME | "C:\Program Files (x86)\VMware\VMware Workstation\vmware-authd.exe" |
+| SERVICE_START_NAME | LocalSystem |
+| Owner | BUILTIN\Administrators |
+
+**端口监听检查：**
+
+```bash
+netstat -ano | grep ":902"
+# 输出：
+# TCP    0.0.0.0:902    0.0.0.0:0    LISTENING
+```
+
+**关键发现：**
+
+| 检查项 | 状态 | 说明 |
+|--------|------|------|
+| VMAuthdService 进程 | ✅ 运行中 | vmware-authd.exe (PID 5772) |
+| VMAuthdService 服务 | ✅ Running | AUTO_START |
+| 902 端口 | ✅ 监听中 | **已恢复正常！** |
+| 依赖服务 winmgmt | ✅ Running | |
+| 依赖服务 vmx86 | ✅ Running | |
+
+**VMware 进程状态：**
+
+```
+vmware.exe         PID 15704  2026/4/30 15:00:07  ✅
+vmware-authd.exe   PID 5772   2026/4/30 14:56:38  ✅
+vmware-tray.exe    PID 6788   2026/4/30 14:58:24  ✅
+vmware-usbarbitrator64.exe  PID 5808  2026/4/30 14:56:38  ✅
+```
+
+**库存文件检查 (inventory.vmls)：**
+
+4 个虚拟机已正确注册：
+- aiubuntudesktop1 (Ubuntu 64-bit)
+- aiubuntudesktop2
+- aiubuntus1
+- k8s-control1
+
+**问题分析：**
+
+尽管 **VMAuthdService 正在运行且 902 端口已监听**，但 UI 仍然报错"授权服务没有运行"。这说明：
+
+1. **服务与 UI 之间的通信可能存在问题**
+2. **可能是 UI 层面的缓存或连接问题**
+3. **需要重启 VMAuthdService 或重启 VMware Workstation**
+
+**建议尝试的解决方案：**
+
+```powershell
+# 方案1：重启 VMAuthdService
+Restart-Service -Name VMAuthdService -Force
+
+# 方案2：以管理员身份重启
+net stop VMAuthdService && net start VMAuthdService
+
+# 方案3：完全关闭 VMware 后重新以管理员身份启动
+```
+
+---
+
 ## 三、问题分析
 
 ### 3.1 核心问题定位
@@ -296,11 +386,12 @@ tasklist | grep vmware
 |--------|------|------|------|
 | VMware NAT Service | Running | Running | ✅ 正常 |
 | VMAuthdService 进程 | 存在 | 存在 | ✅ 正常 |
-| VMAuthdService 902 端口 | 监听中 | 未监听 | ❌ 异常 |
+| VMAuthdService 902 端口 | 监听中 | **已恢复监听** | ✅ 正常 |
 | vmrun list | 正常 | 正常 | ✅ 正常 |
 | vmrun start | 创建 VMX 进程 | 静默失败 | ❌ 异常 |
 | vmware.exe 打开 VMX | 成功 | 成功 | ✅ 正常 |
 | 虚拟机电源状态 | Running | poweredOff | ❌ 需手动启动 |
+| UI 报错 "授权服务没有运行" | 否 | 是 | ❌ 异常 |
 
 ### 3.2 问题链条
 
@@ -316,6 +407,38 @@ flowchart TD
     style C fill:#ff6b6b
     style D fill:#ff6b6b
     style F fill:#ff6b6b
+```
+
+### 3.3 14:53 后修复安装状态（新情况）
+
+**修复安装后状态：**
+
+| 检查项 | 状态 | 说明 |
+|--------|------|------|
+| VMAuthdService | ✅ Running | 服务正常运行 |
+| 902 端口 | ✅ 监听中 | **已恢复！** |
+| vmware-authd.exe | ✅ 运行中 | PID 5772 |
+| vmware.exe | ✅ 运行中 | PID 15704 |
+| UI 报错 | ❌ 仍报错 | "授权服务没有运行" |
+
+**问题分析：**
+
+服务本身正常运行，但 **UI 与服务之间的通信仍存在问题**。可能原因：
+
+1. **UI 缓存了之前的错误状态** - 需要重启 VMware Workstation
+2. **进程间通信问题** - vmware.exe 与 vmware-authd.exe 之间的 RPC 连接异常
+3. **权限问题** - 当前用户权限不足以通过认证
+
+**下一步建议：**
+
+```powershell
+# 1. 完全关闭 VMware（所有相关进程）
+taskkill /F /IM vmware*.exe
+
+# 2. 重启 VMAuthdService
+Restart-Service -Name VMAuthdService -Force
+
+# 3. 以管理员身份重新启动 VMware Workstation
 ```
 
 ---
