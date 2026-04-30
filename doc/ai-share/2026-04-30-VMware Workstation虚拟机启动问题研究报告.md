@@ -30,7 +30,8 @@
 | **2026-04-30 15:00** | VMware Workstation 启动 | 点击虚拟机弹出授权服务错误 |
 | **2026-04-30 15:30~15:40** | 完全卸载 VMware | 使用控制面板卸载 |
 | **2026-04-30 15:40~15:45** | VMware 残留清理 | 删除目录和注册表残留 |
-| **2026-04-30 15:45~** | 安装 VMware 25H2 | 安装包路径：D:\software\dev\VMware-Workstation-Full-25H2-24995812.exe |
+| **2026-04-30 15:45~16:00** | 安装 VMware 25H2 | 安装包路径：D:\software\dev\VMware-Workstation-Full-25H2-24995812.exe |
+| **2026-04-30 16:00** | VMware 25H2 安装完成 | VMware Workstation Pro 25H2 (25.0.1 build-24995812) |
 
 **关键时间节点证据：**
 
