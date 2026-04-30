@@ -116,6 +116,16 @@ sc query "VMware NAT Service"
 
 ### 2.2 虚拟机启动问题（核心问题）
 
+**VMware 授权服务错误截图：**
+
+![VMware 授权服务错误](2026-04-30-vmware-auth-error.png)
+
+**错误信息：** "授权服务没有运行"
+
+**说明：** 点击虚拟机启动后，弹出错误对话框，显示 VMware Authorization Service 未运行。
+
+---
+
 #### 2.2.1 锁定文件检查
 
 发现虚拟机目录存在 `.lck` 锁定文件夹：
