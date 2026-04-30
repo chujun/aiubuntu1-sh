@@ -317,13 +317,48 @@ sequenceDiagram
 
 ### 5.2 根本解决方案
 
-VMAuthdService 的 902 端口未监听是根本问题。可能的原因：
+**重大发现：** 从 **VMware Workstation 16.2.0** 开始，**Shared VM（共享虚拟机）功能已被移除**，端口 902 不再监听是**正常行为**，不是故障。
 
-1. **服务配置损坏** - 需要修复 VMware 安装
-2. **依赖服务异常** - `vmx86` 驱动与 `vmware-authd.exe` 通信异常
-3. **Windows 防火墙/安全策略** - 阻止了 localhost RPC 通信
+| 版本 | 端口 902 | Shared VM 功能 |
+|------|---------|---------------|
+| 16.2.0 之前 | ✅ 监听 | ✅ 可用 |
+| 16.2.0 及之后 | ❌ 不监听 | ❌ 已移除 |
 
-**推荐操作：** 完全卸载 VMware Workstation → 清理残留 → 重新安装
+**结论：** VMware Workstation 25.0.1 的 902 端口不监听是**设计变更**，不是故障。vmrun 静默失败需要进一步排查其他原因。
+
+**如需彻底重装 VMware，官方提供以下清理方式：**
+
+#### A. 自动清理（安装程序参数）
+
+```bash
+# Workstation 7.x - 14.x
+VMware-workstation-full-xx.x.x.exe /clean
+
+# Workstation 5.x 或 6.x
+installer.exe /c
+```
+
+#### B. 手动清理步骤
+
+**停止服务：**
+- VMware Authorization Service
+- VMware DHCP Service
+- VMware NAT Service
+- VMware USB Arbitration Service
+- VMware Workstation Server
+
+**删除文件夹：**
+- `C:\Program Files\VMware`（或 `C:\Program Files (x86)\VMware`）
+- `C:\Users\<username>\AppData\Local\VMware\`
+- `C:\Users\<username>\AppData\Roaming\VMware\`
+- `C:\ProgramData\VMware\`
+
+**清理注册表：**
+- `HKEY_LOCAL_MACHINE\SOFTWARE\VMware, Inc.`
+- `HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\VMware, Inc.`
+- `HKEY_CURRENT_USER\Software\VMware, Inc.`
+
+**⚠️ 重要警告：** 16.2.0+ 版本升级后，Shared VM 功能不可逆地移除。如果此功能对您的工作流至关重要，需要保持在旧版本或迁移到专用 ESXi 主机。
 
 ---
 
@@ -424,10 +459,12 @@ rm -rf /d/repository/vmware/*/*.lck
 ## 九、注意事项
 
 1. **锁定文件** - 删除前确认没有 VMware 进程正在运行
-2. **端口 902 vs 903/913** - `vmware-authd.exe` 监听在 903/913 而非标准 902 端口，这是 vmrun 失败的根本原因
-3. **直接运行 vmware-vmx** - 会因无客户端连接而自动退出，这是正常行为
-4. **poweredOff 状态** - VMware UI 打开虚拟机后显示此状态，需要手动点击 Power On
-5. **奇安信日志说明** - 日志仅记录操作，未记录结果（阻止/允许），无法证明操作被阻止
+2. **端口 902 不监听** - 从 VMware Workstation 16.2.0+ 开始是正常行为（Shared VM 功能被移除），不是故障
+3. **vmrun 静默失败** - 需要排查 903/913 端口连接情况，而非 902 端口
+4. **直接运行 vmware-vmx** - 会因无客户端连接而自动退出，这是正常行为
+5. **poweredOff 状态** - VMware UI 打开虚拟机后显示此状态，需要手动点击 Power On
+6. **奇安信日志说明** - 日志仅记录操作，未记录结果（阻止/允许），无法证明操作被阻止
+7. **VMware 官方无独立 cleanup 工具** - 只能通过安装程序 `/clean` 参数或手动清理
 
 ---
 
@@ -449,14 +486,14 @@ rm -rf /d/repository/vmware/*/*.lck
 |------|------|
 | **VMware NAT Service** | ✅ 已恢复正常 |
 | **VMAuthdService 进程** | ✅ 运行中 (PID 3196) |
-| **902 端口** | ❌ 未监听 |
+| **902 端口** | ❌ 未监听（16.2.0+ 版本正常行为） |
 | **903/913 端口** | ✅ 监听中（vmware-authd 实际监听端口） |
 | **vmrun list** | ✅ 正常 |
 | **vmrun start** | ❌ 静默失败（连接 902 失败） |
 | **VMware UI 打开虚拟机** | ✅ 成功（需手动 Power On） |
 | **虚拟机电源状态** | poweredOff（需手动启动） |
 
-**核心结论：** `vmware-authd.exe` 监听在 903/913 端口而非标准的 902 端口，导致 vmrun 无法通过 RPC 启动虚拟机。这是 VMware 服务配置异常，与奇安信软件无直接因果关系（奇安信日志仅记录操作，无法证明阻止）。
+**核心结论：** 从 VMware Workstation 16.2.0 开始，Shared VM 功能被移除，端口 902 不再监听是**正常设计变更**，不是故障。`vmware-authd.exe` 监听在 903/913 端口。vmrun 静默失败原因需进一步排查。VMware 官方无独立 cleanup 工具，只能通过安装程序 `/clean` 参数或手动清理。奇安信日志无法证明操作被阻止。
 
 ---
 
