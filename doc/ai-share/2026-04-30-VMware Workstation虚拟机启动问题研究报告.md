@@ -123,9 +123,25 @@ powershell -Command "Get-NetTCPConnection -OwningProcess 3196 | Select-Object Lo
 | 903 | ✅ 监听中 | VM remote console |
 | 913 | ✅ 监听中 | 未知用途 |
 
-**分析：** `vmware-authd.exe` 进程正常运行，但绑定到了错误的端口（903/913 而非 902）。vmrun 默认连接 902 端口进行 RPC 通信，因此连接失败导致静默失败。这是 **VMware 服务配置异常**，与奇安信软件无直接因果关系（奇安信日志仅记录了操作，未记录结果，无法证明阻止）。
+**进一步排查 — VMware 配置文件：**
 
-**分析：** VMAuthdService 依赖的 `vmx86` 驱动正常运行（内核驱动状态 4 RUNNING），但 `vmware-authd.exe` 进程监听在错误端口（903/913 而非 902），导致 vmrun 无法通过 RPC 与之通信。
+```bash
+# 检查 VMware 配置文件
+cat "C:\ProgramData\VMware\VMware Workstation\config.ini"
+
+# 输出：
+# authd.client.port = "903"
+# authd.proxy.nfc = "vmware-hostd:ha-nfc"
+```
+
+**官网文档调查结果：**
+
+访问 VMware Workstation Pro 25H2u1 官方 Release Notes（https://techdocs.broadcom.com/...）验证：
+- **未找到**关于认证端口从 902 变更为 903 的变更说明
+- 902/903 仅出现在 HTML 元素 ID 中，非端口配置说明
+- 发行说明主要涉及 bug 修复，不涉及 VMAuthdService 端口变更
+
+**分析：** `vmware-authd.exe` 进程正常运行并监听在 903/913 端口，但 `config.ini` 中 `authd.client.port = "903"` 是**客户端连接配置**，并非服务端监听端口。vmrun 默认连接 902 端口进行 RPC 通信，而当前无进程监听 902，导致连接失败。这是 **VMware 服务配置异常**，可能需要重装 VMware 或在 Workstation 设置中重置认证服务。与奇安信软件**无直接因果关系**（奇安信日志仅记录操作，未记录结果，无法证明阻止）。
 
 ---
 
