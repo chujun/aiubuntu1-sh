@@ -32,6 +32,8 @@
 | **2026-04-30 15:40~15:45** | VMware 残留清理 | 删除目录和注册表残留 |
 | **2026-04-30 15:45~16:00** | 安装 VMware 25H2 | 安装包路径：D:\software\dev\VMware-Workstation-Full-25H2-24995812.exe |
 | **2026-04-30 16:00** | VMware 25H2 安装完成 | VMware Workstation Pro 25H2 (25.0.1 build-24995812) |
+| **2026-04-30 16:00~20:xx** | 多次重启后问题依旧 | vmware-authd StartServiceCtrlDispatcher error = 1063 |
+| **2026-04-30 20:43** | vmware-authd 服务状态 RUNNING | 但 902 端口未监听，核心问题未解决 |
 
 **关键时间节点证据：**
 
@@ -444,6 +446,48 @@ Restart-Service -Name VMAuthdService -Force
 
 # 3. 以管理员身份重新启动 VMware Workstation
 ```
+
+---
+
+### 3.4 2026-04-30 16:00 后 VMware 25H2 全新安装状态
+
+**全新安装 VMware 25H2 后的状态：**
+
+| 检查项 | 状态 | 说明 |
+|--------|------|------|
+| VMAuthdService | ✅ Running | 服务显示运行中 |
+| vmware-authd.exe | ✅ 运行中 | PID 5488 |
+| 902 端口 | ❌ **未监听** | **核心问题！** |
+
+**关键错误日志 (vmauthd.log)：**
+
+```
+2026-04-30T12:40:59.139Z -ERROR vmware-authd.exe StartServiceCtrlDispatcher error = 1063
+```
+
+**错误分析：**
+
+| 错误代码 | 含义 |
+|---------|------|
+| 1063 | `ERROR_SERVICE_REQUEST_TIMEOUT` - 服务控制器启动超时 |
+
+**问题根因：**
+
+`vmware-authd.exe` 的 `StartServiceCtrlDispatcher` 调用失败，导致服务虽然显示为 Running 状态，但实际功能未启动，因此不监听 902 端口。
+
+**可能原因：**
+
+1. VMware 安装程序要求重启但用户未重启（或重启不完整）
+2. VMware 安装文件损坏
+3. 系统服务控制器异常
+4. 与其他软件冲突
+
+**建议尝试：**
+
+1. **完全卸载 VMware**
+2. **重启计算机**（确保所有服务状态重置）
+3. **重新安装 VMware 25H2**
+4. **再次重启计算机**（如果安装程序要求）
 
 ---
 
