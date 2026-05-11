@@ -11,7 +11,7 @@
 
 #### 场景：网络故障时处理备份
 - **当** 同步尝试时网络不可用
-- **那么** 系统应将失败记录到 `~/.claude/backups/sync.log`
+- **那么** 系统应将失败记录到 `~/.claude/my-backups/my-sync.log`
 - **并且** 系统应正常结束会话，不阻塞退出
 - **并且** 下次成功同步时应包含所有待处理的更改
 
@@ -55,7 +55,7 @@
 
 #### 场景：冲突无法自动解决
 - **当** 执行 `git pull --rebase` 时产生无法自动解决的冲突
-- **那么** 系统应将警告记录到 `~/.claude/backups/sync.log`
+- **那么** 系统应将警告记录到 `~/.claude/my-backups/my-sync.log`
 - **并且** 记录应包含 "unresolved conflicts - manual intervention required"
 - **并且** 系统应中止同步，等待用户手动解决
 - **并且** 会话应正常结束，不被阻塞
@@ -65,7 +65,7 @@
 
 #### 场景：成功备份被记录
 - **当** 备份成功完成时
-- **那么** 条目 `[时间戳] Sync OK` 应追加到 `~/.claude/backups/sync.log`
+- **那么** 条目 `[时间戳] Sync OK` 应追加到 `~/.claude/my-backups/my-sync.log`
 
 #### 场景：失败备份被记录
 - **当** 备份因网络或其他错误失败时

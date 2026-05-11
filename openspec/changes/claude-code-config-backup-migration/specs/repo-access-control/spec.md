@@ -27,6 +27,6 @@
 
 #### 场景：验证期间 API 错误
 - **当** 可见性检查期间 GitHub API 返回错误时
-- **那么** 错误应记录到 `~/.claude/backups/sync.log`
+- **那么** 错误应记录到 `~/.claude/my-backups/my-sync.log`
 - **并且** 系统应为安全起见默认拒绝同步
 - **并且** Claude Code 退出不应被阻塞
