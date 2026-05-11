@@ -6,6 +6,9 @@
 .claude/shell-snapshots/
 .claude/backups/
 .claude/file-history/
+.claude/mcp-needs-auth-cache.json
+.claude/paste-cache/
+.claude/plugins/cache/
 
 # Skills sync logs
 my-skills/my-skills-sync/*.log
