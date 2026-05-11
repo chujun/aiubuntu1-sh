@@ -1,0 +1,8 @@
+# Claude Code 运行时文件
+sessions/
+shell-snapshots/
+backups/
+file-history/
+mcp-needs-auth-cache.json
+paste-cache/
+plugins/cache/

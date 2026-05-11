@@ -1,15 +1,6 @@
 # Claude Code
 .claude/
 
-# Claude Code 运行时文件
-.claude/sessions/
-.claude/shell-snapshots/
-.claude/backups/
-.claude/file-history/
-.claude/mcp-needs-auth-cache.json
-.claude/paste-cache/
-.claude/plugins/cache/
-
 # Skills sync logs
 my-skills/my-skills-sync/*.log
 
