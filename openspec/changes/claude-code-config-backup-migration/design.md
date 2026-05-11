@@ -44,18 +44,30 @@ git remote add origin git@github.com:user/repo.git
 
 Claude Code 的 SessionEnd 钩子在会话结束时触发，专门用于生命周期管理。
 
+**`hooks/hooks.json` 中的实际配置：**
+
 ```json
-{
-  "hooks": {
-    "SessionEnd": [
+"SessionEnd": [
+  {
+    "matcher": "*",
+    "hooks": [
       {
         "type": "command",
-        "command": "~/.claude/my-scripts/my-backup.sh"
+        "command": "bash \"/root/.claude/my-scripts/my-backup.sh\"",
+        "async": true,
+        "timeout": 60
       }
-    ]
+    ],
+    "description": "Backup Claude Code config to GitHub (my-backup)"
   }
-}
+]
 ```
+
+**配置说明：**
+- `matcher`: "*" 匹配所有命令
+- `async`: true 异步执行，不阻塞会话结束
+- `timeout`: 60 秒超时
+- `description`: 钩子描述
 
 **替代方案**:
 - PreToolUse/PostToolUse：触发太频繁，不适合耗时操作
