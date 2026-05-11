@@ -1,6 +1,12 @@
 # Claude Code
 .claude/
 
+# Claude Code 运行时文件
+.claude/sessions/
+.claude/shell-snapshots/
+.claude/backups/
+.claude/file-history/
+
 # Skills sync logs
 my-skills/my-skills-sync/*.log
 
