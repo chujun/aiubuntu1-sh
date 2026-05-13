@@ -41,7 +41,7 @@
 >   - 克隆后 Ansible Playbook 自动修改：
 >     - /etc/hostname
 >     - /etc/hosts
->     - .vmx guestinfo.local-hostname
+>   - 注：.vmx 文件位于 Windows 本地，无法从 Linux Ansible 控制节点修改，但不影响（Cloud-Init 首次启动后已生效）
 >   - 理由：VMware Workstation 无 vSphere 自定义规范功能，适合 Ansible 自动化方案
 
 ## 3. Ansible 控制节点配置
@@ -74,7 +74,7 @@
 - [ ] 5.3 创建 `roles/common/ssh/tasks/debian.yml`（Ubuntu/Debian 专用）
 - [ ] 5.4 创建 `roles/common/ssh/vars/debian.yml` 变量文件
 - [ ] 5.5 创建 `roles/common/hostname/` Role（主机名配置，包含 hosts 文件）
-- [ ] 5.6 创建 `roles/common/hostname/tasks/main.yml` 主任务文件（修改 /etc/hostname、/etc/hosts、.vmx guestinfo.local-hostname）
+- [ ] 5.6 创建 `roles/common/hostname/tasks/main.yml` 主任务文件（修改 /etc/hostname、/etc/hosts）
 - [ ] 5.7 创建 `roles/common/ntp/` Role（NTP 时间同步）
 - [ ] 5.8 创建 `roles/common/firewall/` Role（防火墙配置）
 - [ ] 5.9 创建 `roles/common/firewall/tasks/debian.yml`（ufw）
