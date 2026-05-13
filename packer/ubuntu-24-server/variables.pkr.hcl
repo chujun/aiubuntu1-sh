@@ -4,8 +4,8 @@
 # ISO 相关配置
 variable "iso_url" {
   type    = string
-  default = "https://releases.ubuntu.com/24.04/ubuntu-24.04-live-server-amd64.iso"
-  description = "Ubuntu 24.04 Server ISO 下载地址"
+  default = "D:/repository/iso/ubuntu-24.04.4-live-server-amd64.iso"
+  description = "Ubuntu 24.04 Server ISO 本地路径或下载 URL"
 }
 
 variable "iso_checksum" {
