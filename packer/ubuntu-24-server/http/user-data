@@ -24,6 +24,8 @@ users:
     groups: sudo
     shell: /bin/bash
     sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHii4zDYroZhDE3uTWZvFaQ8SJ61Yvt0MLEbA8uMcKX+  # Ansible 控制节点公钥
     lock_passwd: false
     passwd: ubuntu
 
