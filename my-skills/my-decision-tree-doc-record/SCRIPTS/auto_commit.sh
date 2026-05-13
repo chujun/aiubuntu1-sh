@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 自动提交到 GitHub 脚本
 # 仅提交 doc/decision-trees/ 目录，绝不使用 git add .
-# 用法：bash SCRIPTS/auto_commit.sh <项目路径> <决策主题> [决策节点数] [最终方案]
+# 用法：bash SCRIPTS/auto_commit.sh <统一文档项目路径> <决策主题> [决策节点数] [最终方案]
 
 set -e
 
@@ -11,7 +11,7 @@ NODE_COUNT="${3:-N}"
 FINAL_PLAN="${4:-未知}"
 
 if [ -z "$PROJECT_PATH" ] || [ -z "$DOC_TITLE" ]; then
-    echo "用法：bash SCRIPTS/auto_commit.sh <项目路径> <决策主题> [决策节点数] [最终方案]"
+    echo "用法：bash SCRIPTS/auto_commit.sh <统一文档项目路径> <决策主题> [决策节点数] [最终方案]"
     exit 1
 fi
 
