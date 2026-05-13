@@ -28,7 +28,7 @@ users:
     ssh_authorized_keys:
       - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHii4zDYroZhDE3uTWZvFaQ8SJ61Yvt0MLEbA8uMcKX+  # Ansible 控制节点公钥
     lock_passwd: false
-    passwd: $6$aK.TlYrXz/cj1kDR$LYkuRXbeIHawV/3A4r/V98UCKsEzfp0DAtM0sXeKuMh80vkrDNwhVfpvqRKhAk/tZr1w9CbLqqcZrDnWALYQO.
+    passwd: $6$aK.TlYrXz/cj1kDR$LYkuRXbeIHawV/3A4r/V98UCKsEzfp0DAtM0sXeKuMh80vkrDNwhVfpvqRKhAk/tZr1w9CbLqqcZrDnWALYQO.  # 明文密码: ubuntucj
 
 # 设置主机名
 hostname: ubuntu-server
