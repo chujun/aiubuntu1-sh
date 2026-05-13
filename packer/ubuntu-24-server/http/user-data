@@ -26,7 +26,7 @@ users:
     shell: /bin/bash
     sudo: ALL=(ALL) NOPASSWD:ALL
     ssh_authorized_keys:
-      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDPaX8b7a+b6Q5JZCL1zkH3G6eqY...  # 替换为你的公钥
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHii4zDYroZhDE3uTWZvFaQ8SJ61Yvt0MLEbA8uMcKX+
     lock_passwd: false
     # 明文密码 (crypted: 前缀表示已加密)
     # 使用 echo 'password' | openssl passwd -6 -stdin 生成
