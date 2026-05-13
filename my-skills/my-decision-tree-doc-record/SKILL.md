@@ -1,5 +1,5 @@
 ---
-name: my-decision-tree-doc-builder
+name: my-decision-tree-doc-record
 description: 从方案选型对话中自动提取决策节点，构建可视化的 Mermaid 决策树文档。输出包含决策树图、决策记录表、约束条件追踪，适用于基础设施选型、技术架构决策等场景。支持版本管理、输出文档版本控制、用户偏好记忆、自学习更新机制。
 origin: local
 version: "1.2.0"
@@ -20,16 +20,16 @@ updated: "2026-05-13"
 ## 调用方式
 
 ```
-/my-decision-tree-doc-builder [可选：决策主题]
+/my-decision-tree-doc-record [可选：决策主题]
 ```
 
 ### 版本管理模式
 
-- `/my-decision-tree-doc-builder --versions` — 列出所有版本
-- `/my-decision-tree-doc-builder --changelog` — 查看变更日志
-- `/my-decision-tree-doc-builder --diff v1.0.0 v1.2.0` — 对比两个版本
-- `/my-decision-tree-doc-builder --restore v1.0.0` — 回滚到指定版本
-- `/my-decision-tree-doc-builder --set-doc-dir <path>` — 设置默认输出目录
+- `/my-decision-tree-doc-record --versions` — 列出所有版本
+- `/my-decision-tree-doc-record --changelog` — 查看变更日志
+- `/my-decision-tree-doc-record --diff v1.0.0 v1.2.0` — 对比两个版本
+- `/my-decision-tree-doc-record --restore v1.0.0` — 回滚到指定版本
+- `/my-decision-tree-doc-record --set-doc-dir <path>` — 设置默认输出目录
 
 ---
 

@@ -1,4 +1,4 @@
-# my-decision-tree-doc-builder 变更日志
+# my-decision-tree-doc-record 变更日志
 
 ## v1.2.0 (2026-05-13)
 ### 新增

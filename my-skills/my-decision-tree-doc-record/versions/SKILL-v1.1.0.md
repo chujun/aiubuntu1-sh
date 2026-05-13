@@ -1,14 +1,32 @@
 ---
 name: my-decision-tree-doc-builder
-description: 从方案选型对话中自动提取决策节点，构建可视化的 Mermaid 决策树文档。输出包含决策树图、决策记录表、约束条件追踪，适用于基础设施选型、技术架构决策等场景。支持版本管理、输出文档版本控制、用户偏好记忆、自学习更新机制。
+description: 从方案选型对话中自动提取决策节点，构建可视化的 Mermaid 决策树文档。输出包含决策树图、决策记录表、约束条件追踪，适用于基础设施选型、技术架构决策等场景。支持版本管理、输出文档版本控制、用户偏好记忆。
 origin: local
-version: "1.2.0"
-updated: "2026-05-13"
+version: "1.1.0"
+updated: "2026-05-12"
 ---
 
 # My Decision Tree Doc Builder
 
 从方案选型对话中提取决策节点，构建可视化的 Mermaid 决策树文档。
+
+## 定位差异
+
+| 技能 | 目标 | 输入 | 输出 |
+|------|------|------|------|
+| brainstorming | 方案设计与多轮对话 | 用户需求描述 | 设计方案 |
+| my-decision-tree-doc-builder | 决策追踪与可视化 | 方案选型对话 | 决策树文档 |
+
+**协作流程**：
+```
+brainstorming（方案设计）
+    ↓ 对话结果
+my-decision-tree-doc-builder（提取决策树）
+    ↓ 文档
+doc/decision-trees/（决策树 Markdown）
+```
+
+---
 
 ## 使用场景
 
@@ -27,7 +45,7 @@ updated: "2026-05-13"
 
 - `/my-decision-tree-doc-builder --versions` — 列出所有版本
 - `/my-decision-tree-doc-builder --changelog` — 查看变更日志
-- `/my-decision-tree-doc-builder --diff v1.0.0 v1.2.0` — 对比两个版本
+- `/my-decision-tree-doc-builder --diff v1.0.0 v1.1.0` — 对比两个版本
 - `/my-decision-tree-doc-builder --restore v1.0.0` — 回滚到指定版本
 - `/my-decision-tree-doc-builder --set-doc-dir <path>` — 设置默认输出目录
 
@@ -48,16 +66,6 @@ bash SCRIPTS/collect_metadata.sh
 从会话 system-reminder 中提取：
 - **会话 ID**：从 session summary 或文件路径提取 UUID 部分
 - **AI 模型**：从 system-reminder 中的模型信息读取
-
-#### 会话耗时估算
-
-1. **起止时间**：从会话开始到当前时刻
-2. **空闲扣除规则**：如果用户两条消息之间的间隔**超过 2 小时**，则将该段等待时间扣除
-3. **精度**：保留 1 位小数，单位为小时
-
-```
-> **预计耗时：** X.X 小时（HH:MM ~ HH:MM，空闲说明）
-```
 
 ---
 
@@ -210,13 +218,7 @@ flowchart TD
 
 ---
 
-### Phase 8：输出文档（双目录机制）
-
-#### 文档存放策略（双目录机制）
-
-**1. 原始 Markdown** → 用户统一文档项目 `doc/decision-trees/`
-
-**2. 跳转 HTML** → 当前项目 `doc/decision-trees/`
+### Phase 8：输出文档
 
 **文件命名**：
 ```
@@ -227,54 +229,19 @@ doc/decision-trees/{YYYY-MM-DD}-{决策主题}-decision-tree.md
 - 新建版本：追加 `-v2`、`-v3` 等后缀
 - 覆盖文档：直接覆盖
 
-**跳转 HTML 模板：**
-
-```html
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url={链接地址}">
-    <title>{决策主题}决策树 - 跳转中</title>
-</head>
-<body>
-    <p>正在跳转到决策树文档...</p>
-    <p>如果没有自动跳转，请点击：<a href="{链接地址}">{决策主题}决策树</a></p>
-    <hr>
-    <p><small>原始文档：{统一文档项目路径}/doc/decision-trees/{文件名}.md</small></p>
-    <p><small>生成时间：{YYYY-MM-DD}</small></p>
-</body>
-</html>
-```
-
-**GitHub 链接必须 URL 编码：**
-
-```bash
-python3 -c "import urllib.parse; print(urllib.parse.quote('文件名.md'))"
-```
-
 ---
 
 ### Phase 9：质量自检
 
-#### 第一步：运行 Mermaid 语法检查
-
-```bash
-bash SCRIPTS/validate_mermaid.sh <文件路径>
-```
-
-> 脚本内容见 [SCRIPTS/validate_mermaid.sh](./SCRIPTS/validate_mermaid.sh)
-
-#### 第二步：逐项确认
+生成文档后检查：
 
 - [ ] 决策树节点数量与识别到的决策节点一致
 - [ ] 否决方案标注了 elimination_reason
 - [ ] 最终方案标注了 selected
-- [ ] Mermaid 语法验证通过（exit 0）
+- [ ] Mermaid 语法正确（节点 ID 唯一）
 - [ ] 决策记录表包含所有决策节点
 - [ ] 约束条件追踪表完整
 - [ ] 无乱码（运行 `grep -n "�" <文件路径>` 确认）
-- [ ] 文档头部字段完整：决策主题、日期、预计耗时
 
 ---
 
@@ -295,71 +262,6 @@ docs: 新增 {决策主题} 决策树文档
 
 ---
 
-### Phase 11：自学习更新机制
-
-#### 11.1 改进发现时机
-
-在执行过程中关注：
-- 新场景未覆盖
-- 重复手动操作
-- 用户反馈修正
-- 异常降级
-- 缺失能力
-
-#### 11.2 建议提出格式
-
-```
-🧠 技能自学习建议（本次执行中发现）
-
-发现 N 个可改进之处：
-
-┌─ 建议 1：{标题}
-│  类型：新增能力 / 优化流程 / 修复问题
-│  触发原因：{具体发生了什么}
-│  改进方案：{怎么改}
-│  影响范围：{影响哪些 Phase}
-└─ 优先级：高 / 中 / 低
-
-是否应用这些改进？
-```
-
-#### 11.3 用户决策
-
-| 选项 | 说明 |
-|------|------|
-| **全部应用** | 批量修改 |
-| **逐条选择** | 逐个确认 |
-| **暂不改动** | 记录到 IMPROVEMENTS.md |
-| **自定义** | 用户补充 |
-
-#### 11.4 应用流程
-
-```
-1. 备份当前版本
-2. 修改 SKILL.md
-3. 升版号（patch/minor）
-4. 备份新版本
-5. 展示 diff
-```
-
-#### 11.5 建议记录
-
-若用户选择「暂不改动」，记录到：
-
-```markdown
-# 技能改进建议池
-
-## 待处理建议
-
-### [{日期}] {标题}
-- **类型：** 新增能力
-- **触发场景：** {描述}
-- **建议方案：** {描述}
-- **状态：** 待处理 / 已应用(v{版本号}) / 已驳回({原因})
-```
-
----
-
 ## 版本管理
 
 ### 版本元数据
@@ -376,7 +278,7 @@ cat versions/CHANGELOG.md
 
 ```bash
 # 对比任意两个版本
-diff versions/SKILL-v1.0.0.md versions/SKILL-v1.2.0.md
+diff versions/SKILL-v1.0.0.md versions/SKILL-v1.1.0.md
 ```
 
 ### 版本回滚
@@ -388,27 +290,80 @@ cp versions/SKILL-v${TARGET_VERSION}.md SKILL.md
 
 ---
 
-## 输出文档模板
+## 输出文档结构
 
-> 完整模板内容见 [TEMPLATE.md](./TEMPLATE.md)
+### 完整文档模板
 
-生成文档时，读取 TEMPLATE.md 并根据会话内容填充各占位符。
+```markdown
+# {决策主题} 决策树
+
+> **决策主题：** {主题名称}
+> **生成日期：** {YYYY-MM-DD}
+> **会话来源：** {brainstorming 对话 / 会议纪要等}
 
 ---
 
-## 输出示例
+## 决策树总览
 
+```mermaid
+flowchart TD
+    START --> Q1
+    ...
 ```
-✅ 决策树文档已生成：
-  📄 原始文档：/root/sh/doc/decision-trees/2026-05-12-VMware自动化方案决策树.md
-  🔗 跳转页面：doc/decision-trees/2026-05-12-VMware自动化方案决策树.html
-  🌐 GitHub 链接：https://github.com/chujun/aiubuntu1-sh/blob/main/doc/decision-trees/2026-05-12-VMware%E8%87%AA%E5%8A%A8%E5%8C%96%E6%96%B9%E6%A1%88%E5%86%B3%E7%AD%96%E6%A0%91.md
 
-📊 文档统计：
-  - 总行数：XXX 行
-  - Mermaid 图表：X 张
-  - 决策节点数：N 个
+---
 
-🚀 Git 提交状态：
-  - ✅ 已提交并推送到 GitHub (commit: abc1234)
+## 决策记录表
+
+| 决策节点 | 选项 A | 选项 B | 最终选择 | 核心理由 |
+|---------|--------|--------|---------|---------|
+
+---
+
+## 约束条件追踪
+
+| 约束来源 | 约束内容 | 影响决策 |
+|---------|---------|---------|
+| | | |
+
+---
+
+## 各决策节点详情
+
+### Q1: {决策问题}
+
+**约束条件**：{约束列表}
+
+**方案对比**：
+
+| 维度 | 方案A | 方案B |
+|------|-------|-------|
+| 优势 | ... | ... |
+| 劣势 | ... | ... |
+
+**决策结果**：{最终选择}
+
+**决策理由**：{理由}
+
+---
+
+## 最终方案汇总
+
+**选型结果**：{最终方案组合}
+
+| 层级 | 选型 | 工具/方案 |
+|------|------|-----------|
+| | | |
+
+---
+
+## 未来扩展路径
+
+| 扩展方向 | 当前决策影响 | 扩展准备 |
+|---------|------------|---------|
+| | | |
+
+---
+
+*决策树生成时间：{YYYY-MM-DD HH:MM}*
 ```
