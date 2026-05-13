@@ -19,10 +19,6 @@ network:
 
 # 用户配置
 users:
-  # 全局 SSH 公钥 - 所有用户共享
-  ssh_authorized_keys:
-    # Ansible 控制节点公钥
-    - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHii4zDYroZhDE3uTWZvFaQ8SJ61Yvt0MLEbA8uMcKX+
   - default
   - name: ubuntu
     primary-group: ubuntu
@@ -32,10 +28,16 @@ users:
     lock_passwd: false
     # 明文密码: ubuntucj
     passwd: $6$aK.TlYrXz/cj1kDR$LYkuRXbeIHawV/3A4r/V98UCKsEzfp0DAtM0sXeKuMh80vkrDNwhVfpvqRKhAk/tZr1w9CbLqqcZrDnWALYQO.
+    ssh_authorized_keys:
+      # Ansible 控制节点公钥
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHii4zDYroZhDE3uTWZvFaQ8SJ61Yvt0MLEbA8uMcKX+
   - name: root
     lock_passwd: false
     # 明文密码: chujuncj
     passwd: $6$3ovtZR.a.HBavDgd$BXEtNDup33sNNRoiSUIteqkxtbMzD5opPoaABLggLOmu0uljRkQL6XxriXmbvnza7dwTAUEKBjn1E9frg2/7r/
+    ssh_authorized_keys:
+      # Ansible 控制节点公钥
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHii4zDYroZhDE3uTWZvFaQ8SJ61Yvt0MLEbA8uMcKX+
 
 # 设置主机名
 hostname: ubuntu-server
