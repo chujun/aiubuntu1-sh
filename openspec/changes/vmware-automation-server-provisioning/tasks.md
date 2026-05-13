@@ -64,17 +64,19 @@
 
 ## 5. Ansible Common 层 Role
 
-> 🔒 阻塞：4.5 完成后才能解锁 5.1-5.9
+> 🔒 阻塞：4.5 完成后才能解锁 5.1-5.11
 
 - [ ] 5.1 创建 `roles/common/ssh/` Role（SSH 服务配置）
 - [ ] 5.2 创建 `roles/common/ssh/tasks/main.yml` 主任务文件
 - [ ] 5.3 创建 `roles/common/ssh/tasks/debian.yml`（Ubuntu/Debian 专用）
 - [ ] 5.4 创建 `roles/common/ssh/vars/debian.yml` 变量文件
-- [ ] 5.5 创建 `roles/common/ntp/` Role（NTP 时间同步）
-- [ ] 5.6 创建 `roles/common/firewall/` Role（防火墙配置）
-- [ ] 5.7 创建 `roles/common/firewall/tasks/debian.yml`（ufw）
-- [ ] 5.8 创建 `roles/common/firewall/tasks/redhat.yml`（firewalld）
-- [ ] 5.9 创建 `playbooks/base.yml` 基础配置 playbook
+- [ ] 5.5 创建 `roles/common/hostname/` Role（主机名配置）
+- [ ] 5.6 创建 `roles/common/hostname/tasks/main.yml` 主任务文件
+- [ ] 5.7 创建 `roles/common/ntp/` Role（NTP 时间同步）
+- [ ] 5.8 创建 `roles/common/firewall/` Role（防火墙配置）
+- [ ] 5.9 创建 `roles/common/firewall/tasks/debian.yml`（ufw）
+- [ ] 5.10 创建 `roles/common/firewall/tasks/redhat.yml`（firewalld）
+- [ ] 5.11 创建 `playbooks/base.yml` 基础配置 playbook
 
 ## 6. Ansible Runtime 层 Role
 
