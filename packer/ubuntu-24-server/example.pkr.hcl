@@ -15,7 +15,7 @@ ssh_username = "ubuntu"
 ssh_password = "ubuntu"  # 修改为你的密码
 
 # 网络配置 - VMnet0=桥接, VMnet8=NAT
-network_bridge = "VMnet0"
+network_bridge = "VMnet8"
 
 # headless 模式 - true=不显示控制台
 headless = false

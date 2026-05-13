@@ -56,7 +56,7 @@ variable "ssh_password" {
 # 网络配置
 variable "network_bridge" {
   type    = string
-  default = "VMnet0"
+  default = "VMnet8"
   description = "网络桥接模式 (VMnet0=桥接, VMnet1=HostOnly, NAT=VMnet8)"
 }
 
