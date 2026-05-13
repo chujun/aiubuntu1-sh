@@ -1,73 +1,116 @@
 # Cloud-Init 配置文件 - Ubuntu 24.04 Server
 # 用于 Packer 无人值守安装
+# Ubuntu 24.04 Server 使用 Autoinstall (Subiquity) 方式
 
 # version 必须为 2
 version: 2
 
-# 早期命令 - 在 cloud-init 之前执行
-early-commands:
-  # 等待网络就绪
-  - ping -c 1 archive.ubuntu.com || true
+# ============================================================
+# Autoinstall 配置 (Subiquity)
+# ============================================================
+autoinstall:
+  version: 1
 
-# 网络配置 - 使用默认的 DHCP
-network:
-  version: 2
-  ethernets:
-    ens33:
-      dhcp4: true
-      optional: true
+  # --------------------------------------------------------
+  # 存储分区配置
+  # --------------------------------------------------------
+  # 说明：
+  #   - UEFI 模式下会自动创建 EFI 系统分区 (512MB) 和 BIOS Boot 分区 (1MB)
+  #   - root 分区: 20GB，挂载 /
+  #   - data 分区: 20GB，挂载 /data
+  #   - rest: 使用剩余空间
+  # --------------------------------------------------------
+  storage:
+    layout:
+      - name: root
+        devices:
+          - sda
+        partitions:
+          - sizing: 20G
+            mount: /
+          - sizing: 20G
+            mount: /data
+          - sizing: rest
+            mount: none
 
-# 用户配置
-users:
-  - default
-  - name: ubuntu
-    primary-group: ubuntu
-    groups: sudo
-    shell: /bin/bash
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    lock_passwd: false
-    # 明文密码: ubuntucj
-    passwd: $6$aK.TlYrXz/cj1kDR$LYkuRXbeIHawV/3A4r/V98UCKsEzfp0DAtM0sXeKuMh80vkrDNwhVfpvqRKhAk/tZr1w9CbLqqcZrDnWALYQO.
-    ssh_authorized_keys:
-      # Ansible 控制节点公钥
-      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHii4zDYroZhDE3uTWZvFaQ8SJ61Yvt0MLEbA8uMcKX+
-  - name: root
-    lock_passwd: false
-    # 明文密码: chujuncj
-    passwd: $6$3ovtZR.a.HBavDgd$BXEtNDup33sNNRoiSUIteqkxtbMzD5opPoaABLggLOmu0uljRkQL6XxriXmbvnza7dwTAUEKBjn1E9frg2/7r/
-    ssh_authorized_keys:
-      # Ansible 控制节点公钥
-      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHii4zDYroZhDE3uTWZvFaQ8SJ61Yvt0MLEbA8uMcKX+
+  # --------------------------------------------------------
+  # 用户配置
+  # --------------------------------------------------------
+  users:
+    - default
+    - name: ubuntu
+      primary-group: ubuntu
+      groups: sudo
+      shell: /bin/bash
+      sudo: ALL=(ALL) NOPASSWD:ALL
+      lock_passwd: false
+      # 明文密码: ubuntucj
+      passwd: $6$aK.TlYrXz/cj1kDR$LYkuRXbeIHawV/3A4r/V98UCKsEzfp0DAtM0sXeKuMh80vkrDNwhVfpvqRKhAk/tZr1w9CbLqqcZrDnWALYQO.
+      ssh_authorized_keys:
+        # Ansible 控制节点公钥
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHii4zDYroZhDE3uTWZvFaQ8SJ61Yvt0MLEbA8uMcKX+
+    - name: root
+      lock_passwd: false
+      # 明文密码: chujuncj
+      passwd: $6$3ovtZR.a.HBavDgd$BXEtNDup33sNNRoiSUIteqkxtbMzD5opPoaABLggLOmu0uljRkQL6XxriXmbvnza7dwTAUEKBjn1E9frg2/7r/
+      ssh_authorized_keys:
+        # Ansible 控制节点公钥
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHii4zDYroZhDE3uTWZvFaQ8SJ61Yvt0MLEbA8uMcKX+
 
-# 设置主机名
-hostname: ubuntu-server
-manage_etc_hosts: true
+  # --------------------------------------------------------
+  # 主机名配置
+  # --------------------------------------------------------
+  hostname: ubuntu-server
+  manage_etc_hosts: true
 
-# APT 配置
-package-update: true
-package-upgrade: true
-packages:
-  - openssh-server
-  - cloud-init
-  - curl
-  - wget
+  # --------------------------------------------------------
+  # APT 配置
+  # --------------------------------------------------------
+  package-update: true
+  package-upgrade: true
+  packages:
+    - openssh-server
+    - cloud-init
+    - curl
+    - wget
 
-# 运行命令
-runcmd:
-  # 禁用 cloud-init 的网络配置（使用 DHCP）
-  - systemctl mask cloud-init-local.service
-  # 等待网络完全就绪
-  - sleep 5
-  # 验证 SSH 服务
-  - systemctl enable ssh
-  - systemctl start ssh
-  # 打印网络信息
-  - ip addr show
-  # 清理 cloud-init 缓存，确保下次启动重新生成
-  - cloud-init clean --logs
+  # --------------------------------------------------------
+  # 早期命令 - 在 cloud-init 之前执行
+  # --------------------------------------------------------
+  early-commands:
+    # 等待网络就绪
+    - ping -c 1 archive.ubuntu.com || true
 
-# 最终清理
-final-message: |
-  === System is ready ===
-  Hostname: ${hostname}
-  Cloud-init has completed.
+  # --------------------------------------------------------
+  # 网络配置 - 使用默认的 DHCP
+  # --------------------------------------------------------
+  network:
+    version: 2
+    ethernets:
+      ens33:
+        dhcp4: true
+        optional: true
+
+  # --------------------------------------------------------
+  # 运行命令
+  # --------------------------------------------------------
+  runcmd:
+    # 禁用 cloud-init 的网络配置（使用 DHCP）
+    - systemctl mask cloud-init-local.service
+    # 等待网络完全就绪
+    - sleep 5
+    # 验证 SSH 服务
+    - systemctl enable ssh
+    - systemctl start ssh
+    # 打印网络信息
+    - ip addr show
+    # 清理 cloud-init 缓存，确保下次启动重新生成
+    - cloud-init clean --logs
+
+  # --------------------------------------------------------
+  # 最终清理
+  # --------------------------------------------------------
+  final-message: |
+    === System is ready ===
+    Hostname: ${hostname}
+    Cloud-init has completed.
