@@ -42,13 +42,13 @@ variable "memory" {
 # SSH 配置
 variable "ssh_username" {
   type    = string
-  default = "ubuntu"
+  default = "app"
   description = "SSH 用户名"
 }
 
 variable "ssh_password" {
   type      = string
-  default   = "ubuntu"
+  default   = "app"
   sensitive = true
   description = "SSH 密码"
 }
