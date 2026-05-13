@@ -1,5 +1,11 @@
 # my-decision-tree-doc-record 变更日志
 
+## v1.3.2 (2026-05-13)
+### 新增
+- 背景与上下文章节（所有决策共享的上下文信息）
+- 决策节点增加权衡考量 subsection
+- Phase 4 增加文档级元数据（background, context, motivation, tradeoffs）
+
 ## v1.3.1 (2026-05-13)
 ### 修复
 - Phase 9 validate_mermaid.sh 调用命令（bash 改为 python3）
