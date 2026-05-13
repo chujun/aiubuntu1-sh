@@ -28,9 +28,7 @@ users:
     ssh_authorized_keys:
       - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHii4zDYroZhDE3uTWZvFaQ8SJ61Yvt0MLEbA8uMcKX+  # Ansible 控制节点公钥
     lock_passwd: false
-    # 明文密码 (crypted: 前缀表示已加密)
-    # 使用 echo 'password' | openssl passwd -6 -stdin 生成
-    passwd: $6$rounds=656000$...  # 替换为加密后的密码
+    passwd: $6$aK.TlYrXz/cj1kDR$LYkuRXbeIHawV/3A4r/V98UCKsEzfp0DAtM0sXeKuMh80vkrDNwhVfpvqRKhAk/tZr1w9CbLqqcZrDnWALYQO.
 
 # 设置主机名
 hostname: ubuntu-server
