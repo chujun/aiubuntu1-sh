@@ -14,8 +14,8 @@
 - [x] 1.1 在 VMware Workstation Pro 中创建 Ansible 控制节点 VM（Ubuntu Server 24.04，2C/4GB/40GB）
 - [x] 1.2 配置控制节点 VM 网络（与目标 VM 同网段）
 - [x] 1.3 在控制节点 VM 中安装 Python3、pip、Git、sshpass、rsync
-- [ ] 1.4 在 Windows 11 上下载并安装 Packer（解压到指定目录）
-- [ ] 1.5 验证 Packer 安装：`packer --version`
+- [x] 1.4 在 Windows 11 上下载并安装 Packer（解压到指定目录）
+- [x] 1.5 验证 Packer 安装：`packer --version`
 
 ## 2. Packer 镜像构建配置
 
