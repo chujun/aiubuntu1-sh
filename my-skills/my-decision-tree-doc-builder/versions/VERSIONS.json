@@ -1,0 +1,17 @@
+{
+  "current": "1.1.0",
+  "versions": [
+    {
+      "version": "1.1.0",
+      "date": "2026-05-13",
+      "changelog": "新增版本管理机制、输出文档版本控制、用户偏好记忆、10 个 Phase 完整流程",
+      "phases": ["Phase 0-10"]
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-05-12",
+      "changelog": "初始版本",
+      "phases": ["Phase 1-5"]
+    }
+  ]
+}
