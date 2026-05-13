@@ -43,6 +43,10 @@
 >     - /etc/hosts
 >   - 注：.vmx 文件位于 Windows 本地，无法从 Linux Ansible 控制节点修改，但不影响（Cloud-Init 首次启动后已生效）
 >   - 理由：VMware Workstation 无 vSphere 自定义规范功能，适合 Ansible 自动化方案
+> - **IP 配置策略**：采用 DHCP 静态保留（待后续验证）
+>   - 当前配置：DHCP 自动获取 IP
+>   - 计划方案：VMware NAT DHCP 根据 MAC 地址分配固定 IP
+>   - 理由：先验证 DHCP 动态分配是否满足需求，后续再考虑静态保留
 
 ## 3. Ansible 控制节点配置
 
