@@ -36,6 +36,10 @@
 > - **用户配置策略**：保留 ubuntu 用户 + root 用户并行存在，后续 Ansible/SSH 操作使用 root 用户连接
 >   - 理由：ubuntu 用户便于日常登录，root 用于自动化操作
 >   - Inventory 配置：`ansible_user: root`
+> - **主机名配置策略**：采用方案B - 克隆后通过 Ansible 自动修改 hostname
+>   - Packer 构建时设置默认 guestinfo.local-hostname
+>   - 克隆后 Ansible Playbook 自动修改 /etc/hostname 和 /etc/hosts
+>   - 理由：VMware Workstation 无 vSphere 自定义规范功能，适合 Ansible 自动化方案
 
 ## 3. Ansible 控制节点配置
 

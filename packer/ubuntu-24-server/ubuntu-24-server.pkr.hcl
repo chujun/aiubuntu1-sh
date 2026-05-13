@@ -54,9 +54,10 @@ source "vmware-iso" "ubuntu-24-server" {
 
   # VMX 额外配置
   vmx_data = {
-    "bios.bootOrder" = "cd"
-    "firmware"       = "efi"
-    "uefi.secureBoot.enabled" = "FALSE"
+    "bios.bootOrder"             = "cd"
+    "firmware"                   = "efi"
+    "uefi.secureBoot.enabled"    = "FALSE"
+    "guestinfo.local-hostname"    = "ubuntu-server"
   }
 
   # 输出目录
