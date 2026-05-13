@@ -1,7 +1,7 @@
 # 自定义变量文件 - 用户可复制此文件并修改
 
 # ISO 相关配置
-iso_url      = "https://releases.ubuntu.com/24.04/ubuntu-24.04-live-server-amd64.iso"
+iso_url      = "D:/repository/iso/ubuntu-24.04.4-live-server-amd64.iso"
 iso_checksum = "sha256:8c60f1b8ca06c04ac564f0409952684ee9aca8c7a56d6c6c8c3b02b6974f8a3b"
 
 # VM 配置
