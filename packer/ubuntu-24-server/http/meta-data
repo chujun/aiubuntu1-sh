@@ -1,0 +1,5 @@
+# Cloud-Init Meta-Data
+# 实例元数据文件
+
+instance-id: ubuntu-24-04-server
+local-hostname: ubuntu-server

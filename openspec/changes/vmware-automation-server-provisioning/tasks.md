@@ -21,11 +21,11 @@
 
 > 🔒 阻塞：1.5 完成后才能执行 2.6-2.9；2.1-2.5 可提前编写
 
-- [ ] 2.1 创建 `packer/ubuntu-24-server/` 目录结构
-- [ ] 2.2 编写 `ubuntu-24-server.pkr.hcl` Packer 配置文件
-- [ ] 2.3 创建 Cloud-Init `http/user-data` 配置文件（主机名、用户、SSH 密钥）
-- [ ] 2.4 创建 Cloud-Init `http/meta-data` 配置文件
-- [ ] 2.5 编写 `variables.pkr.hcl` 共享变量文件（ISO 路径、VM 配置等）
+- [x] 2.1 创建 `packer/ubuntu-24-server/` 目录结构
+- [x] 2.2 编写 `ubuntu-24-server.pkr.hcl` Packer 配置文件
+- [x] 2.3 创建 Cloud-Init `http/user-data` 配置文件（主机名、用户、SSH 密钥）
+- [x] 2.4 创建 Cloud-Init `http/meta-data` 配置文件
+- [x] 2.5 编写 `variables.pkr.hcl` 共享变量文件（ISO 路径、VM 配置等）
 - [ ] 2.6 运行 `packer validate` 验证配置
 - [ ] 2.7 准备 Ubuntu 24.04 Server ISO 文件
 - [ ] 2.8 执行 `packer build` 构建 Ubuntu Server 基础镜像

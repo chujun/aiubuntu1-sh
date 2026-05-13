@@ -1,0 +1,66 @@
+# Cloud-Init 配置文件 - Ubuntu 24.04 Server
+# 用于 Packer 无人值守安装
+
+# version 必须为 2
+version: 2
+
+# 早期命令 - 在 cloud-init 之前执行
+early-commands:
+  # 等待网络就绪
+  - ping -c 1 archive.ubuntu.com || true
+
+# 网络配置 - 使用默认的 DHCP
+network:
+  version: 2
+  ethernets:
+    ens33:
+      dhcp4: true
+      optional: true
+
+# 用户配置
+users:
+  - default
+  - name: ubuntu
+    primary-group: ubuntu
+    groups: sudo
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDPaX8b7a+b6Q5JZCL1zkH3G6eqY...  # 替换为你的公钥
+    lock_passwd: false
+    # 明文密码 (crypted: 前缀表示已加密)
+    # 使用 echo 'password' | openssl passwd -6 -stdin 生成
+    passwd: $6$rounds=656000$...  # 替换为加密后的密码
+
+# 设置主机名
+hostname: ubuntu-server
+manage_etc_hosts: true
+
+# APT 配置
+package-update: true
+package-upgrade: true
+packages:
+  - openssh-server
+  - cloud-init
+  - curl
+  - wget
+
+# 运行命令
+runcmd:
+  # 禁用 cloud-init 的网络配置（使用 DHCP）
+  - systemctl mask cloud-init-local.service
+  # 等待网络完全就绪
+  - sleep 5
+  # 验证 SSH 服务
+  - systemctl enable ssh
+  - systemctl start ssh
+  # 打印网络信息
+  - ip addr show
+  # 清理 cloud-init 缓存，确保下次启动重新生成
+  - cloud-init clean --logs
+
+# 最终清理
+final-message: |
+  === System is ready ===
+  Hostname: ${hostname}
+  Cloud-init has completed.
