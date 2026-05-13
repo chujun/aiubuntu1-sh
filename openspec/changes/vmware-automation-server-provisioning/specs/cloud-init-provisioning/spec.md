@@ -2,75 +2,75 @@
 
 > **部署说明**：Cloud-Init 软件运行在目标 VM 内部（Ubuntu 24 自带），Cloud-Init 配置文件通过 Packer 挂载的 ISO 注入。
 
-## ADDED Requirements
+## 新增需求
 
-### Requirement: Cloud-Init creates initial user
+### 需求：Cloud-Init 创建初始用户
 
-The system SHALL create an administrative user account during first boot using Cloud-Init user-data configuration.
+系统必须在首次启动时使用 Cloud-Init user-data 配置创建管理员用户账户。
 
-#### Scenario: User creation on first boot
-- **WHEN** A VM provisioned with Cloud-Init boots for the first time
-- **THEN** Cloud-Init creates the user specified in user-data
-- **AND** The user has sudo privileges (passwordless sudo for admin group)
+#### 场景：首次启动时创建用户
+- **当** 使用 Cloud-Init 配置的 VM 首次启动时
+- **则** Cloud-Init 创建 user-data 中指定的用户
+- **且** 该用户具有 sudo 权限（admin 组无密码 sudo）
 
-#### Scenario: User creation with SSH authorized keys
-- **WHEN** Cloud-Init user-data includes SSH public keys
-- **THEN** The created user can authenticate via SSH using the corresponding private key
-- **AND** Password authentication is disabled for security
-
----
-
-### Requirement: Cloud-Init configures network
-
-The system SHALL configure the VM's network settings via Cloud-Init, supporting DHCP and static IP configurations.
-
-#### Scenario: DHCP network configuration
-- **WHEN** Cloud-Init user-data specifies DHCP network config
-- **THEN** The VM obtains IP address via DHCP on the primary interface
-- **AND** DNS servers are configured according to the DHCP response
-
-#### Scenario: Static IP network configuration
-- **WHEN** Cloud-Init user-data specifies static IP configuration
-- **THEN** The VM uses the specified IP address, netmask, gateway, and DNS servers
-- **AND** Network configuration persists across reboots
+#### 场景：使用 SSH 授权密钥创建用户
+- **当** Cloud-Init user-data 包含 SSH 公钥时
+- **则** 创建的用户可以使用对应的私钥通过 SSH 认证
+- **且** 为安全起见，密码认证被禁用
 
 ---
 
-### Requirement: Cloud-Init sets hostname
+### 需求：Cloud-Init 配置网络
 
-The system SHALL set the VM's hostname during first boot based on Cloud-Init configuration.
+系统必须通过 Cloud-Init 配置 VM 的网络设置，支持 DHCP 和静态 IP 配置。
 
-#### Scenario: Hostname assignment
-- **WHEN** A VM boots with Cloud-Init configured with hostname "vm-ubuntu-server-01"
-- **THEN** The VM's hostname is set to "vm-ubuntu-server-01"
-- **AND** The hostname resolves correctly in the local network
+#### 场景：DHCP 网络配置
+- **当** Cloud-Init user-data 指定 DHCP 网络配置时
+- **则** VM 通过 DHCP 在主接口上获取 IP 地址
+- **且** DNS 服务器根据 DHCP 响应进行配置
 
----
-
-### Requirement: Cloud-Init runs on first boot only
-
-The system SHALL ensure Cloud-Init only runs its user-data scripts on the first boot, not on subsequent boots.
-
-#### Scenario: First boot executes user-data
-- **WHEN** A new VM boots for the first time with Cloud-Init
-- **THEN** Cloud-Init executes all user-data modules (users, groups, write_files, runcmd)
-
-#### Scenario: Subsequent boots skip user-data
-- **WHEN** The same VM boots a second time
-- **THEN** Cloud-Init skips user-data execution
-- **AND** Boot time is not affected by Cloud-Init processing
+#### 场景：静态 IP 网络配置
+- **当** Cloud-Init user-data 指定静态 IP 配置时
+- **则** VM 使用指定的 IP 地址、子网掩码、网关和 DNS 服务器
+- **且** 网络配置在重启后持久化
 
 ---
 
-### Requirement: Cloud-Init logs are accessible
+### 需求：Cloud-Init 设置主机名
 
-The system SHALL provide accessible Cloud-Init logs for troubleshooting provisioning issues.
+系统必须基于 Cloud-Init 配置在首次启动时设置 VM 的主机名。
 
-#### Scenario: Cloud-Init log location
-- **WHEN** Cloud-Init executes during VM boot
-- **THEN** Logs are written to `/var/log/cloud-init.log`
-- **AND** Output from user-data scripts is written to `/var/log/cloud-init-output.log`
+#### 场景：主机名分配
+- **当** VM 使用配置了主机名 "vm-ubuntu-server-01" 的 Cloud-Init 启动时
+- **则** VM 的主机名设置为 "vm-ubuntu-server-01"
+- **且** 主机名在本地网络中正确解析
 
-#### Scenario: Cloud-Init status command
-- **WHEN** `cloud-init status` is executed on a running VM
-- **THEN** It returns the current Cloud-Init execution state (running, done, error)
+---
+
+### 需求：Cloud-Init 仅在首次启动时运行
+
+系统必须确保 Cloud-Init 仅在首次启动时运行 user-data 脚本，后续启动不再运行。
+
+#### 场景：首次启动执行 user-data
+- **当** 新 VM 首次使用 Cloud-Init 启动时
+- **则** Cloud-Init 执行所有 user-data 模块（users、groups、write_files、runcmd）
+
+#### 场景：后续启动跳过 user-data
+- **当** 同一 VM 第二次启动时
+- **则** Cloud-Init 跳过 user-data 执行
+- **且** 启动时间不受 Cloud-Init 处理影响
+
+---
+
+### 需求：Cloud-Init 日志可访问
+
+系统必须提供可访问的 Cloud-Init 日志，以便排查配置问题。
+
+#### 场景：Cloud-Init 日志位置
+- **当** Cloud-Init 在 VM 启动期间执行时
+- **则** 日志写入 `/var/log/cloud-init.log`
+- **且** user-data 脚本的输出写入 `/var/log/cloud-init-output.log`
+
+#### 场景：Cloud-Init status 命令
+- **当** 在运行的 VM 上执行 `cloud-init status` 时
+- **则** 返回当前 Cloud-Init 执行状态（running、done、error）

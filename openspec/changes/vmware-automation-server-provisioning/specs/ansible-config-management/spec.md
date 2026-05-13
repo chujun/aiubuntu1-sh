@@ -2,111 +2,111 @@
 
 > **部署说明**：Ansible 运行在独立的 Linux 控制节点 VM（Ubuntu Server）上，通过 SSH 连接到目标 VM 进行配置管理。
 
-## ADDED Requirements
+## 新增需求
 
-### Requirement: Ansible connects to target VMs via SSH
+### 需求：Ansible 通过 SSH 连接到目标 VM
 
-The system SHALL establish SSH connections from the Ansible control node to target VMs for configuration management.
+系统必须从 Ansible 控制节点建立到目标 VM 的 SSH 连接以进行配置管理。
 
-#### Scenario: Ansible ping test succeeds
-- **WHEN** `ansible -i inventory/hosts.yml all -m ping` is executed
-- **THEN** Ansible connects to all target VMs via SSH
-- **AND** Returns SUCCESS for each reachable VM
+#### 场景：Ansible ping 测试成功
+- **当** 执行 `ansible -i inventory/hosts.yml all -m ping` 时
+- **则** Ansible 通过 SSH 连接到所有目标 VM
+- **且** 对每个可达的 VM 返回 SUCCESS
 
-#### Scenario: Ansible connection failure handling
-- **WHEN** Ansible attempts to connect to an unreachable VM
-- **THEN** Ansible reports UNREACHABLE status for that host
-- **AND** Continues execution for other hosts without failing entirely
-
----
-
-### Requirement: Ansible configures SSH service
-
-The system SHALL configure SSH daemon settings including disabling password authentication and configuring authorized keys.
-
-#### Scenario: SSH hardening applied
-- **WHEN** `ansible-playbook -i inventory/hosts.yml playbooks/base.yml --tags ssh` is executed
-- **THEN** SSH password authentication is disabled
-- **AND** Root login is disabled
-- **AND** SSH authorized_keys are configured for ansible user
+#### 场景：Ansible 连接失败处理
+- **当** Ansible 尝试连接到不可达的 VM 时
+- **则** Ansible 报告该主机为 UNREACHABLE 状态
+- **且** 继续对其他主机执行而不整体失败
 
 ---
 
-### Requirement: Ansible configures NTP service
+### 需求：Ansible 配置 SSH 服务
 
-The system SHALL configure NTP time synchronization on target VMs.
+系统必须配置 SSH 守护进程设置，包括禁用密码认证和配置授权密钥。
 
-#### Scenario: NTP service enabled and running
-- **WHEN** `ansible-playbook -i inventory/hosts.yml playbooks/base.yml --tags ntp` is executed
-- **THEN** NTP service is installed
-- **AND** NTP service is enabled and running
-- **AND** Time synchronization with specified NTP servers is active
-
----
-
-### Requirement: Ansible configures firewall
-
-The system SHALL configure firewall rules on target VMs, opening only required ports.
-
-#### Scenario: Firewall allows SSH and defined services
-- **WHEN** `ansible-playbook -i inventory/hosts.yml playbooks/base.yml --tags firewall` is executed
-- **THEN** SSH (port 22) is allowed
-- **AND** Only additionally specified ports are opened
-- **AND** Default deny policy is applied for incoming connections
+#### 场景：SSH 加固已应用
+- **当** 执行 `ansible-playbook -i inventory/hosts.yml playbooks/base.yml --tags ssh` 时
+- **则** SSH 密码认证被禁用
+- **且** root 登录被禁用
+- **且** 为 ansible 用户配置了 SSH authorized_keys
 
 ---
 
-### Requirement: Ansible installs Docker runtime
+### 需求：Ansible 配置 NTP 服务
 
-The system SHALL install and configure Docker runtime environment on target VMs.
+系统必须在目标 VM 上配置 NTP 时间同步。
 
-#### Scenario: Docker installation
-- **WHEN** `ansible-playbook -i inventory/hosts.yml playbooks/runtime.yml --tags docker` is executed
-- **THEN** Docker engine is installed
-- **AND** Docker service is enabled and running
-- **AND** Current user is added to docker group
-
-#### Scenario: Docker daemon configuration
-- **WHEN** Docker is installed via Ansible
-- **THEN** Docker daemon is configured with specified registry mirrors (if any)
-- **AND** Docker socket permissions allow docker group members to access
+#### 场景：NTP 服务已启用并运行
+- **当** 执行 `ansible-playbook -i inventory/hosts.yml playbooks/base.yml --tags ntp` 时
+- **则** NTP 服务已安装
+- **且** NTP 服务已启用并运行
+- **且** 与指定的 NTP 服务器的时间同步处于活动状态
 
 ---
 
-### Requirement: Ansible installs Java runtime
+### 需求：Ansible 配置防火墙
 
-The system SHALL install Java Development Kit on target VMs designated as Java development machines.
+系统必须在目标 VM 上配置防火墙规则，仅开放必需的端口。
 
-#### Scenario: Java installation
-- **WHEN** `ansible-playbook -i inventory/hosts.yml playbooks/runtime.yml --tags java` is executed
-- **THEN** OpenJDK or Oracle JDK is installed (version specified in inventory)
-- **AND** JAVA_HOME environment variable is set
-- **AND** `java -version` executes successfully
-
----
-
-### Requirement: Ansible installs Node.js runtime
-
-The system SHALL install Node.js runtime on target VMs designated for JavaScript/Node development.
-
-#### Scenario: Node.js installation
-- **WHEN** `ansible-playbook -i inventory/hosts.yml playbooks/runtime.yml --tags node` is executed
-- **THEN** Node.js is installed (version specified in inventory)
-- **AND** npm is installed and functional
-- **AND** `node -v` and `npm -v` execute successfully
+#### 场景：防火墙允许 SSH 和定义的服务
+- **当** 执行 `ansible-playbook -i inventory/hosts.yml playbooks/base.yml --tags firewall` 时
+- **则** SSH（端口 22）被允许
+- **且** 仅开放额外指定端口
+- **且** 对入站连接应用默认拒绝策略
 
 ---
 
-### Requirement: Ansible inventory defines target VMs
+### 需求：Ansible 安装 Docker 运行时
 
-The system SHALL use a structured inventory file (YAML format) that defines all target VMs and their groupings.
+系统必须在目标 VM 上安装和配置 Docker 运行时环境。
 
-#### Scenario: Inventory structure
-- **WHEN** `ansible-inventory -i inventory/hosts.yml --list` is executed
-- **THEN** All defined hosts are listed with their variables
-- **AND** Host groups are correctly organized (dev-machines, ai-machines, etc.)
-- **AND** Group variables are accessible to hosts in that group
+#### 场景：Docker 安装
+- **当** 执行 `ansible-playbook -i inventory/hosts.yml playbooks/runtime.yml --tags docker` 时
+- **则** Docker 引擎已安装
+- **且** Docker 服务已启用并运行
+- **且** 当前用户被添加到 docker 组
 
-#### Scenario: Inventory validation
-- **WHEN** `ansible-inventory -i inventory/hosts.yml --graph` is executed
-- **THEN** The hierarchical structure of hosts and groups is displayed correctly
+#### 场景：Docker 守护进程配置
+- **当** 通过 Ansible 安装 Docker 时
+- **则** Docker 守护进程使用指定的镜像仓库镜像（如果有）进行配置
+- **且** Docker socket 权限允许 docker 组用户访问
+
+---
+
+### 需求：Ansible 安装 Java 运行时
+
+系统必须在指定为 Java 开发机的目标 VM 上安装 Java 开发工具包。
+
+#### 场景：Java 安装
+- **当** 执行 `ansible-playbook -i inventory/hosts.yml playbooks/runtime.yml --tags java` 时
+- **则** 安装 OpenJDK 或 Oracle JDK（版本在 inventory 中指定）
+- **且** JAVA_HOME 环境变量已设置
+- **且** `java -version` 执行成功
+
+---
+
+### 需求：Ansible 安装 Node.js 运行时
+
+系统必须在指定用于 JavaScript/Node 开发的目标 VM 上安装 Node.js 运行时。
+
+#### 场景：Node.js 安装
+- **当** 执行 `ansible-playbook -i inventory/hosts.yml playbooks/runtime.yml --tags node` 时
+- **则** Node.js 已安装（版本在 inventory 中指定）
+- **且** npm 已安装且可用
+- **且** `node -v` 和 `npm -v` 执行成功
+
+---
+
+### 需求：Ansible inventory 定义目标 VM
+
+系统必须使用结构化 inventory 文件（YAML 格式）定义所有目标 VM 及其分组。
+
+#### 场景：Inventory 结构
+- **当** 执行 `ansible-inventory -i inventory/hosts.yml --list` 时
+- **则** 所有定义的主机及其变量都被列出
+- **且** 主机组正确组织（dev-machines、ai-machines 等）
+- **且** 主机组变量可被该组中的主机访问
+
+#### 场景：Inventory 验证
+- **当** 执行 `ansible-inventory -i inventory/hosts.yml --graph` 时
+- **则** 主机和组的层次结构被正确显示
