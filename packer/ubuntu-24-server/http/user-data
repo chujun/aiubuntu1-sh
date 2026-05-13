@@ -1,3 +1,4 @@
+#cloud-config
 # Cloud-Init 配置文件 - Ubuntu 24.04 Server
 # 用于 Packer 无人值守安装
 # Ubuntu 24.04 Server 使用 Autoinstall (Subiquity) 方式
@@ -32,6 +33,17 @@ autoinstall:
             mount: /data
           - sizing: rest
             mount: none
+
+  # --------------------------------------------------------
+  # 网络配置 - DHCP 自动获取 IP
+  # --------------------------------------------------------
+  network:
+    network:
+      version: 2
+      ethernets:
+        ens33:
+          dhcp4: true
+          optional: true
 
   # --------------------------------------------------------
   # 用户配置
@@ -106,16 +118,10 @@ autoinstall:
     Cloud-init has completed.
 
 # ============================================================
-# Cloud-Init 网络配置（顶级配置）
+# Cloud-Init 网络配置
 # ============================================================
 # 说明：
-#   - network 是 cloud-init 顶级配置，不属于 autoinstall
+#   - network 放在 autoinstall.network 内部（嵌套结构）
 #   - 使用 DHCP 自动获取 IP
 #   - 如果需要静态 IP，在此处修改
 # ============================================================
-network:
-  version: 2
-  ethernets:
-    ens33:
-      dhcp4: true
-      optional: true
