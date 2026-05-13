@@ -1,5 +1,10 @@
 # my-decision-tree-doc-record 变更日志
 
+## v1.3.1 (2026-05-13)
+### 修复
+- Phase 9 validate_mermaid.sh 调用命令（bash 改为 python3）
+- Phase 2 同名文档检测逻辑（使用动态日期精确匹配）
+
 ## v1.3.0 (2026-05-13)
 ### 优化
 - 统一文档项目机制：使用 `user_doc_dir.md` 与其他技能保持一致
