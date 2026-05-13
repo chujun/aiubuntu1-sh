@@ -32,6 +32,11 @@
 - [ ] 2.9 验证镜像可正常启动并通过 Cloud-Init 完成初始化
 - [ ] 2.10 创建 `packer/ubuntu-24-desktop/` 目录和配置（Desktop 版本）
 
+> **📝 设计决策记录：**
+> - **用户配置策略**：保留 ubuntu 用户 + root 用户并行存在，后续 Ansible/SSH 操作使用 root 用户连接
+>   - 理由：ubuntu 用户便于日常登录，root 用于自动化操作
+>   - Inventory 配置：`ansible_user: root`
+
 ## 3. Ansible 控制节点配置
 
 > 🔒 阻塞：2.8 完成后才能执行 3.1-3.2；3.3-3.5 可提前编写
