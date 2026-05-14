@@ -11,7 +11,7 @@ autoinstall:
   identity:
     hostname: ubuntu-server
     username: ubuntu
-    password: $6$aK.TlYrXz/cj1kDR$LYkuRXbeIHawV/3A4r/V98UCKsEzfp0DAtM0sXeKuMh80vkrDNwhVfpvqRKhAk/tZr1w9CbLqqcZrDnWALYQO.
+    password: $6$7Q6faMv8r3uqGix9$AlCxRApouBwiyqjL6JuBVIHHvKUjDHriPbM.k5zSSA3yTJTBmNnbcKC4k6DNh1O/hpuBiPPao4cqoHkHCBVDN/
 
   # --------------------------------------------------------
   # 存储分区配置 - 使用 LVM 自动分区
