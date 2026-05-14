@@ -63,7 +63,7 @@ variable "network_bridge" {
 # 输出目录
 variable "output_directory" {
   type    = string
-  default = "output/${var.vm_name}"
+  default = "output/ubuntu-24-04-server"
   description = "镜像输出目录"
 }
 
