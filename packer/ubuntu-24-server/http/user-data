@@ -53,8 +53,8 @@ autoinstall:
   # --------------------------------------------------------
   late-commands:
     - sleep 5
-    - systemctl enable ssh
-    - cloud-init clean --logs
+    - curtin in-target --target=/target -- systemctl enable ssh
+    - curtin in-target --target=/target -- cloud-init clean --logs
 
   # --------------------------------------------------------
   # 错误处理
