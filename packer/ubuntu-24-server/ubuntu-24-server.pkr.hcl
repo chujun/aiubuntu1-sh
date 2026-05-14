@@ -23,20 +23,22 @@ source "vmware-iso" "ubuntu-24-server" {
   # HTTP 目录 - Cloud-Init 配置文件通过这个目录提供
   http_directory = "./http"
 
-  # 启动等待时间
-  boot_wait = "10s"
+  # 启动等待时间 - 确保 VM 完全启动到 GRUB 菜单
+  boot_wait = "30s"
+
+  # boot_command - Ubuntu 24.04 使用 Subiquity 安装程序
+  # Ubuntu 24.04 Server ISO 启动后显示 GRUB 菜单
+  # 流程: GRUB菜单 -> 按e编辑 -> 修改linux行添加autoinstall -> 按F10启动
   boot_command = [
-    # 进入 GRUB 菜单
-    "<esc><wait>",
-    "<esc><wait>",
-    "<enter><wait>",
-    # 传递内核参数 - 启用 cloud-init autoinstall
-    "/casper/vmlinuz",
-    " --- ",
-    "autoinstall",
-    " ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/",
-    " noprompt",
-    "<enter><wait>"
+    # 等待 GRUB 菜单，按 e 进入编辑模式
+    "<esc><wait><wait><wait>e<wait><wait><wait>",
+    # 在 linux 行末尾添加参数
+    # 先按 End 键跳到行末
+    "<end><wait><wait>",
+    # 添加空格和 autoinstall 参数
+    " autoinstall ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/",
+    # 等待一下然后按 F10 启动 (也支持 Ctrl+X)
+    "<wait><wait><f10>"
   ]
 
   # 磁盘配置

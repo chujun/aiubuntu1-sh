@@ -1,79 +1,41 @@
 #cloud-config
-# Cloud-Init 配置文件 - Ubuntu 24.04 Server
+# Ubuntu 24.04 Server Autoinstall (Subiquity) 配置文件
 # 用于 Packer 无人值守安装
-# Ubuntu 24.04 Server 使用 Autoinstall (Subiquity) 方式
 
-# version 必须为 2
-version: 2
-
-# ============================================================
-# Autoinstall 配置 (Subiquity)
-# ============================================================
 autoinstall:
   version: 1
 
   # --------------------------------------------------------
-  # 存储分区配置
+  # 身份配置 - 用户/主机信息
   # --------------------------------------------------------
-  # 说明：
-  #   - UEFI 模式下会自动创建 EFI 系统分区 (512MB) 和 BIOS Boot 分区 (1MB)
-  #   - root 分区: 20GB，挂载 /
-  #   - data 分区: 20GB，挂载 /data
-  #   - rest: 使用剩余空间
+  identity:
+    hostname: ubuntu-server
+    username: ubuntu
+    password: $6$aK.TlYrXz/cj1kDR$LYkuRXbeIHawV/3A4r/V98UCKsEzfp0DAtM0sXeKuMh80vkrDNwhVfpvqRKhAk/tZr1w9CbLqqcZrDnWALYQO.
+
+  # --------------------------------------------------------
+  # 存储分区配置 - 使用 LVM 自动分区
   # --------------------------------------------------------
   storage:
     layout:
-      - name: root
-        devices:
-          - sda
-        partitions:
-          - sizing: 20G
-            mount: /
-          - sizing: 20G
-            mount: /data
-          - sizing: rest
-            mount: none
+      name: lvm
+
+  # --------------------------------------------------------
+  # SSH 配置
+  # --------------------------------------------------------
+  ssh:
+    install-server: true
+    allow-pw: true
 
   # --------------------------------------------------------
   # 网络配置 - DHCP 自动获取 IP
   # --------------------------------------------------------
   network:
-    network:
-      version: 2
-      ethernets:
-        ens33:
-          dhcp4: true
-          optional: true
-
-  # --------------------------------------------------------
-  # 用户配置
-  # --------------------------------------------------------
-  users:
-    - default
-    - name: ubuntu
-      primary-group: ubuntu
-      groups: sudo
-      shell: /bin/bash
-      sudo: ALL=(ALL) NOPASSWD:ALL
-      lock_passwd: false
-      # 明文密码: ubuntucj
-      passwd: $6$aK.TlYrXz/cj1kDR$LYkuRXbeIHawV/3A4r/V98UCKsEzfp0DAtM0sXeKuMh80vkrDNwhVfpvqRKhAk/tZr1w9CbLqqcZrDnWALYQO.
-      ssh_authorized_keys:
-        # Ansible 控制节点公钥
-        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHii4zDYroZhDE3uTWZvFaQ8SJ61Yvt0MLEbA8uMcKX+
-    - name: root
-      lock_passwd: false
-      # 明文密码: chujuncj
-      passwd: $6$3ovtZR.a.HBavDgd$BXEtNDup33sNNRoiSUIteqkxtbMzD5opPoaABLggLOmu0uljRkQL6XxriXmbvnza7dwTAUEKBjn1E9frg2/7r/
-      ssh_authorized_keys:
-        # Ansible 控制节点公钥
-        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHii4zDYroZhDE3uTWZvFaQ8SJ61Yvt0MLEbA8uMcKX+
-
-  # --------------------------------------------------------
-  # 主机名配置
-  # --------------------------------------------------------
-  hostname: ubuntu-server
-  manage_etc_hosts: true
+    version: 2
+    ethernets:
+      ens33:
+        dhcp4: true
+        optional: true
 
   # --------------------------------------------------------
   # APT 配置
@@ -87,41 +49,16 @@ autoinstall:
     - wget
 
   # --------------------------------------------------------
-  # 早期命令 - 在 cloud-init 之前执行
+  # 晚期命令 - 安装完成后执行
   # --------------------------------------------------------
-  early-commands:
-    # 等待网络就绪
-    - ping -c 1 archive.ubuntu.com || true
-
-  # --------------------------------------------------------
-  # 运行命令
-  # --------------------------------------------------------
-  runcmd:
-    # 禁用 cloud-init 的网络配置（使用 DHCP）
-    - systemctl mask cloud-init-local.service
-    # 等待网络完全就绪
+  late-commands:
     - sleep 5
-    # 验证 SSH 服务
     - systemctl enable ssh
-    - systemctl start ssh
-    # 打印网络信息
-    - ip addr show
-    # 清理 cloud-init 缓存，确保下次启动重新生成
     - cloud-init clean --logs
 
   # --------------------------------------------------------
-  # 最终清理
+  # 错误处理
   # --------------------------------------------------------
-  final-message: |
-    === System is ready ===
-    Hostname: ${hostname}
-    Cloud-init has completed.
-
-# ============================================================
-# Cloud-Init 网络配置
-# ============================================================
-# 说明：
-#   - network 放在 autoinstall.network 内部（嵌套结构）
-#   - 使用 DHCP 自动获取 IP
-#   - 如果需要静态 IP，在此处修改
-# ============================================================
+  error-commands:
+    - echo "Installation failed"
+    - cat /var/log/syslog
