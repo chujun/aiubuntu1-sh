@@ -57,101 +57,6 @@
 
 ---
 
-## 附录 A：关键错误截图与代码改动点
-
-本节把会话中的关键截图和最终代码改动放在一起，便于读者从“现象”直接追到“根因”和“修复点”。
-
-### A.1 GRUB 参数确认：NoCloud datasource 必须在 `/casper/vmlinuz` 行
-
-![GRUB NoCloud 参数](packer-build-debug-images/01-grub-nocloud-params.png)
-
-截图要点：
-
-- `autoinstall` 位于 `linux /casper/vmlinuz` 后面，这是正确位置。
-- `ds=nocloud-net\;s=http://...` 中的 `\;` 是关键，避免 GRUB 把分号当作命令分隔符。
-- URL 端口必须等于 Packer 日志里的 `Starting HTTP server on port ...`，不能误认为默认 `80`。
-
-对应改动：`packer/ubuntu-24-server/ubuntu-24-server.pkr.hcl`
-
-```hcl
-boot_command = [
-  "<wait>e<wait5>",
-  "<down><wait><down><wait><down><wait2><end><wait5>",
-  "<bs><bs><bs><bs><wait> autoinstall ds=nocloud-net\\;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ ---<wait><f10>"
-]
-```
-
-### A.2 cloud-init network stage：说明安装器正在等待网络 / datasource
-
-![cloud-init network stage](packer-build-debug-images/02-cloud-init-network-stage.png)
-
-截图要点：
-
-- 短时间停在 `Cloud-init: Network Stage` 是正常启动过程。
-- 长时间停住时，需要确认 NoCloud HTTP seed 是否可访问，以及 guest 网络是否正常。
-- 本次后续通过 Curtin 安装截图证明 autoinstall 已经开始工作。
-
-### A.3 Curtin 安装推进：证明 autoinstall 已经生效
-
-![Curtin 安装推进](packer-build-debug-images/03-curtin-install-progress.png)
-
-截图要点：
-
-- 出现 `subiquity/Install/install/curtin_install`、`curtin command install`、`installing kernel`。
-- 这说明安装器已经读取 `http/user-data`，不是还停留在 live server 语言选择流程。
-- 这一阶段之后，问题焦点从 datasource 转向目标系统 SSH 和网络。
-
-### A.4 DataSourceNone 登录页：安装完成后仍需验证 SSH 与目标网卡
-
-![DataSourceNone 登录页](packer-build-debug-images/04-datasource-none-login.png)
-
-截图要点：
-
-- `ubuntu-server login:` 表明系统已经安装并启动。
-- 这里的 `Datasource DataSourceNone` 不再等价于 autoinstall 失败，因为安装阶段已经完成。
-- 后续真正根因是目标系统网卡没有 DHCP 地址，以及 Packer 密码配置不匹配。
-
-### A.5 SSH 与网络相关最终修复
-
-Packer SSH 密码必须和 `user-data` 中 hash 对应的明文一致。用户确认明文是 `ubuntucj` 后，修改 `variables.pkr.hcl`：
-
-```hcl
-variable "ssh_password" {
-  type      = string
-  default   = "ubuntucj"
-  sensitive = true
-  description = "SSH 密码"
-}
-```
-
-目标系统需要显式允许密码登录，修改 `http/user-data`：
-
-```yaml
-late-commands:
-  - sleep 5
-  - curtin in-target --target=/target -- mkdir -p /etc/ssh/sshd_config.d
-  - curtin in-target --target=/target -- bash -c "printf 'PasswordAuthentication yes\nKbdInteractiveAuthentication yes\nUsePAM yes\n' > /etc/ssh/sshd_config.d/99-packer.conf"
-  - curtin in-target --target=/target -- systemctl enable ssh
-  - curtin in-target --target=/target -- cloud-init clean --logs
-```
-
-目标系统真实网卡是 `ens160` / `enp3s0`，不是原先写死的 `ens33`。最终网络配置改成按 `en*` 匹配：
-
-```yaml
-network:
-  version: 2
-  ethernets:
-    primary:
-      match:
-        name: "en*"
-      dhcp4: true
-      optional: true
-```
-
-这些改动合并后，`packer build .` 最终输出 `Connected to SSH!` 并成功生成 `output/ubuntu-24-04-server`。
-
----
-
 ## 三、AI 角色与工作概述
 
 ### 角色定位
@@ -626,6 +531,101 @@ mindmap
 | SSH 失败要拆成网络、握手、认证三层 | EOF、timeout、unable to authenticate 分别代表不同方向 |
 | 自动化构建要清理临时 VM | 中断后旧 output 和旧进程会污染下一次判断 |
 | 与用户一起观察 VNC 很重要 | 图形控制台信息能补齐 Packer 日志看不到的系统内状态 |
+
+---
+
+## 附录 A：关键错误截图与代码改动点
+
+本节把会话中的关键截图和最终代码改动放在一起，便于读者从"现象"直接追到"根因"和"修复点"。
+
+### A.1 GRUB 参数确认：NoCloud datasource 必须在 `/casper/vmlinuz` 行
+
+![GRUB NoCloud 参数](packer-build-debug-images/01-grub-nocloud-params.png)
+
+截图要点：
+
+- `autoinstall` 位于 `linux /casper/vmlinuz` 后面，这是正确位置。
+- `ds=nocloud-net\;s=http://...` 中的 `\;` 是关键，避免 GRUB 把分号当作命令分隔符。
+- URL 端口必须等于 Packer 日志里的 `Starting HTTP server on port ...`，不能误认为默认 `80`。
+
+对应改动：`packer/ubuntu-24-server/ubuntu-24-server.pkr.hcl`
+
+```hcl
+boot_command = [
+  "<wait>e<wait5>",
+  "<down><wait><down><wait><down><wait2><end><wait5>",
+  "<bs><bs><bs><bs><wait> autoinstall ds=nocloud-net\\;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ ---<wait><f10>"
+]
+```
+
+### A.2 cloud-init network stage：说明安装器正在等待网络 / datasource
+
+![cloud-init network stage](packer-build-debug-images/02-cloud-init-network-stage.png)
+
+截图要点：
+
+- 短时间停在 `Cloud-init: Network Stage` 是正常启动过程。
+- 长时间停住时，需要确认 NoCloud HTTP seed 是否可访问，以及 guest 网络是否正常。
+- 本次后续通过 Curtin 安装截图证明 autoinstall 已经开始工作。
+
+### A.3 Curtin 安装推进：证明 autoinstall 已经生效
+
+![Curtin 安装推进](packer-build-debug-images/03-curtin-install-progress.png)
+
+截图要点：
+
+- 出现 `subiquity/Install/install/curtin_install`、`curtin command install`、`installing kernel`。
+- 这说明安装器已经读取 `http/user-data`，不是还停留在 live server 语言选择流程。
+- 这一阶段之后，问题焦点从 datasource 转向目标系统 SSH 和网络。
+
+### A.4 DataSourceNone 登录页：安装完成后仍需验证 SSH 与目标网卡
+
+![DataSourceNone 登录页](packer-build-debug-images/04-datasource-none-login.png)
+
+截图要点：
+
+- `ubuntu-server login:` 表明系统已经安装并启动。
+- 这里的 `Datasource DataSourceNone` 不再等价于 autoinstall 失败，因为安装阶段已经完成。
+- 后续真正根因是目标系统网卡没有 DHCP 地址，以及 Packer 密码配置不匹配。
+
+### A.5 SSH 与网络相关最终修复
+
+Packer SSH 密码必须和 `user-data` 中 hash 对应的明文一致。用户确认明文是 `ubuntucj` 后，修改 `variables.pkr.hcl`：
+
+```hcl
+variable "ssh_password" {
+  type      = string
+  default   = "ubuntucj"
+  sensitive = true
+  description = "SSH 密码"
+}
+```
+
+目标系统需要显式允许密码登录，修改 `http/user-data`：
+
+```yaml
+late-commands:
+  - sleep 5
+  - curtin in-target --target=/target -- mkdir -p /etc/ssh/sshd_config.d
+  - curtin in-target --target=/target -- bash -c "printf 'PasswordAuthentication yes\nKbdInteractiveAuthentication yes\nUsePAM yes\n' > /etc/ssh/sshd_config.d/99-packer.conf"
+  - curtin in-target --target=/target -- systemctl enable ssh
+  - curtin in-target --target=/target -- cloud-init clean --logs
+```
+
+目标系统真实网卡是 `ens160` / `enp3s0`，不是原先写死的 `ens33`。最终网络配置改成按 `en*` 匹配：
+
+```yaml
+network:
+  version: 2
+  ethernets:
+    primary:
+      match:
+        name: "en*"
+      dhcp4: true
+      optional: true
+```
+
+这些改动合并后，`packer build .` 最终输出 `Connected to SSH!` 并成功生成 `output/ubuntu-24-04-server`。
 
 ---
 
