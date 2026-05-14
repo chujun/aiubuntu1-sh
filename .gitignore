@@ -22,6 +22,9 @@ Desktop.ini
 .vscode/
 *.sublime-*
 
+# Packer 构建输出
+output/
+
 # 压缩缓存
 *.zip
 *.tar.gz
