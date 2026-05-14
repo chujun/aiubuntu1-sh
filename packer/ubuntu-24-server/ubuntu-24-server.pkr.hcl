@@ -27,11 +27,11 @@ source "vmware-iso" "ubuntu-24-server" {
   boot_wait = "10s"
 
   # boot_command - 基于 Canonical 官方 packer-maas 配置
-  # 参考: https://github.com/canonical/packer-maas
+  # 参考: https://github.com/canonical/packer-maas/blob/main/ubuntu/ubuntu-flat.pkr.hcl
   boot_command = [
     "<wait>e<wait5>",
     "<down><wait><down><wait><down><wait2><end><wait5>",
-    "<bs><bs><bs><bs><wait> autoinstall ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/<wait><f10>"
+    "<bs><bs><bs><bs><wait> autoinstall ---<wait><f10>"
   ]
 
   # 磁盘配置
