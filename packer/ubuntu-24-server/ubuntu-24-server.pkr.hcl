@@ -23,15 +23,13 @@ source "vmware-iso" "ubuntu-24-server" {
   # HTTP 目录 - Cloud-Init 配置文件通过这个目录提供
   http_directory = "./http"
 
-  # 启动等待时间 - 40秒，等待 UEFI Boot Manager (5s) + GRUB 菜单 (30s) 完全显示
-  # GRUB timeout 是 30 秒，所以我们需要等待足够长的时间让 GRUB 菜单出现
-  boot_wait = "40s"
+  # 启动等待时间 - 20秒，让 GRUB 有足够时间显示
+  boot_wait = "20s"
 
-  # boot_command - Ubuntu 24.04 Server ISO 使用 GRUB
-  # GRUB 菜单有 30 秒倒计时，我们在倒计时结束前按 e 编辑
+  # boot_command - 使用更简单的按键序列
   boot_command = [
-    # 多次按 e 确保被接收
-    "e<wait><wait><wait>e<wait><wait>",
+    # 按 e 进入 GRUB 编辑模式
+    "e<wait><wait><wait><wait>",
     # 按 End 跳到行末
     "<end><wait><wait><wait>",
     # 添加 autoinstall 参数
@@ -62,12 +60,13 @@ source "vmware-iso" "ubuntu-24-server" {
   shutdown_command = "echo '${var.ssh_password}' | sudo -S shutdown -P now"
   shutdown_timeout = "15m"
 
-  # VMX 额外配置 - 确保 CD-ROM 优先启动
+  # VMX 额外配置 - 添加启动延迟让 BIOS 有更多初始化时间
   vmx_data = {
     "bios.bootOrder"              = "cd"
     "firmware"                    = "efi"
     "uefi.secureBoot.enabled"     = "FALSE"
     "guestinfo.local-hostname"    = "ubuntu-server"
+    "bios.bootDelay"              = "5000"
   }
 
   # 输出目录
