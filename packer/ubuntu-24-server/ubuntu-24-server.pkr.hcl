@@ -74,6 +74,7 @@ source "vmware-iso" "ubuntu-24-server" {
 
   # VMware Tools 上传
   tools_upload_flavor = "linux"
+  tools_mode = "upload"
 }
 
 build {
