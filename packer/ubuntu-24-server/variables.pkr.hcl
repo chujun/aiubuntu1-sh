@@ -70,6 +70,6 @@ variable "output_directory" {
 # headless 模式
 variable "headless" {
   type    = bool
-  default = false
+  default = true
   description = "是否显示 VM 控制台窗口"
 }
