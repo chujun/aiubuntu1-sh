@@ -8,20 +8,6 @@ packer {
       source  = "github.com/hashicorp/vmware"
     }
   }
-
-  required_variables {
-    iso_url        = string
-    iso_checksum   = string
-    vm_name        = string
-    disk_size      = number
-    cpus           = number
-    memory         = number
-    ssh_username   = string
-    ssh_password   = string
-    network_bridge = string
-    output_directory = string
-    headless       = bool
-  }
 }
 
 source "vmware-iso" "ubuntu-24-server" {
@@ -37,15 +23,17 @@ source "vmware-iso" "ubuntu-24-server" {
   # HTTP 目录 - Cloud-Init 配置文件通过这个目录提供
   http_directory = "./http"
 
-  # 启动等待时间 - 45秒让 VM 完全启动到 GRUB 菜单
-  boot_wait = "45s"
+  # 启动等待时间 - 7秒，小于 GRUB 10秒倒计时，在自动启动前中断
+  boot_wait = "7s"
 
   # boot_command - Ubuntu 24.04 使用 Subiquity 安装程序
-  # GRUB 菜单 -> 按 e 编辑 -> 在 linux 行添加 autoinstall -> Ctrl+X 启动
+  # 在 GRUB 10秒倒计时结束前按 e 编辑内核参数
   boot_command = [
-    # 等待 GRUB 菜单出现，按 'e' 进入编辑模式
-    "<wait><wait>e<wait><wait><wait>",
-    # 按 End 跳到行末（确保在 linux 行）
+    # 立即按 e 进入编辑模式
+    "e",
+    # 等待编辑界面加载
+    "<wait><wait><wait>",
+    # 按 End 跳到行末
     "<end><wait><wait>",
     # 添加空格和 autoinstall 参数
     " autoinstall ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/",
