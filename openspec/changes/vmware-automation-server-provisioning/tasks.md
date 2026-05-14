@@ -26,10 +26,10 @@
 - [x] 2.3 创建 Cloud-Init `http/user-data` 配置文件（主机名、用户、SSH 密钥）
 - [x] 2.4 创建 Cloud-Init `http/meta-data` 配置文件
 - [x] 2.5 编写 `variables.pkr.hcl` 共享变量文件（ISO 路径、VM 配置等）
-- [ ] 2.6 运行 `packer validate` 验证配置
-- [ ] 2.7 准备 Ubuntu 24.04 Server ISO 文件
-- [ ] 2.8 执行 `packer build` 构建 Ubuntu Server 基础镜像
-- [ ] 2.9 验证镜像可正常启动并通过 Cloud-Init 完成初始化
+- [x] 2.6 运行 `packer validate` 验证配置
+- [x] 2.7 准备 Ubuntu 24.04 Server ISO 文件
+- [x] 2.8 执行 `packer build` 构建 Ubuntu Server 基础镜像
+- [x] 2.9 验证镜像可正常启动并通过 Cloud-Init 完成初始化
 - [ ] 2.10 创建 `packer/ubuntu-24-desktop/` 目录和配置（Desktop 版本）
 
 > **📝 设计决策记录：**
