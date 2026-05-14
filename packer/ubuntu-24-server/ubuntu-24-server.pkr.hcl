@@ -31,7 +31,7 @@ source "vmware-iso" "ubuntu-24-server" {
   boot_command = [
     "<wait>e<wait5>",
     "<down><wait><down><wait><down><wait2><end><wait5>",
-    "<bs><bs><bs><bs><wait> autoinstall ds='nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/' ---<wait><f10>"
+    "<bs><bs><bs><bs><wait> autoinstall ds=nocloud-net\\;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ ---<wait><f10>"
   ]
 
   # 磁盘配置

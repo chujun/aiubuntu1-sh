@@ -48,7 +48,7 @@ variable "ssh_username" {
 
 variable "ssh_password" {
   type      = string
-  default   = "ubuntu"
+  default   = "ubuntucj"
   sensitive = true
   description = "SSH 密码"
 }

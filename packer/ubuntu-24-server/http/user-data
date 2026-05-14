@@ -33,7 +33,9 @@ autoinstall:
   network:
     version: 2
     ethernets:
-      ens33:
+      primary:
+        match:
+          name: "en*"
         dhcp4: true
         optional: true
 
@@ -53,6 +55,8 @@ autoinstall:
   # --------------------------------------------------------
   late-commands:
     - sleep 5
+    - curtin in-target --target=/target -- mkdir -p /etc/ssh/sshd_config.d
+    - curtin in-target --target=/target -- bash -c "printf 'PasswordAuthentication yes\nKbdInteractiveAuthentication yes\nUsePAM yes\n' > /etc/ssh/sshd_config.d/99-packer.conf"
     - curtin in-target --target=/target -- systemctl enable ssh
     - curtin in-target --target=/target -- cloud-init clean --logs
 
