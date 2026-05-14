@@ -23,15 +23,14 @@ source "vmware-iso" "ubuntu-24-server" {
   # HTTP 目录 - Cloud-Init 配置文件通过这个目录提供
   http_directory = "./http"
 
-  # 启动等待时间 - 20秒，在 GRUB 30秒倒计时结束前发送按键
-  # 注意: GRUB timeout=30，所以我们必须在 30 秒内按键
-  boot_wait = "20s"
+  # 启动等待时间 - 28秒，给 GRUB 足够时间显示
+  # GRUB timeout=30，我们在 28 秒时发送按键（倒计时还剩 2 秒）
+  boot_wait = "28s"
 
-  # boot_command - 在 GRUB 倒计时结束前按键
-  # 使用 F10 代替 Ctrl+X 启动
+  # boot_command - GRUB 编辑模式
   boot_command = [
-    "e<wait><wait><wait><wait><wait>",
-    "<end><wait><wait><wait><wait>",
+    "e<wait><wait><wait><wait><wait><wait><wait><wait>",
+    "<end><wait><wait><wait><wait><wait>",
     " autoinstall ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/",
     "<f10>"
   ]
