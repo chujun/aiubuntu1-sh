@@ -23,19 +23,21 @@ source "vmware-iso" "ubuntu-24-server" {
   # HTTP 目录 - Cloud-Init 配置文件通过这个目录提供
   http_directory = "./http"
 
-  # 启动等待时间 - 7秒，小于 GRUB 10秒倒计时，在自动启动前中断
-  boot_wait = "7s"
+  # 启动等待时间 - 12秒，让 VM 完成 UEFI 启动并进入 GRUB
+  boot_wait = "12s"
 
   # boot_command - Ubuntu 24.04 使用 Subiquity 安装程序
-  # 在 GRUB 10秒倒计时结束前按 e 编辑内核参数
+  # 启动流程: UEFI Boot Manager -> GRUB 菜单 -> 编辑内核参数
   boot_command = [
-    # 立即按 e 进入编辑模式
+    # 等待 UEFI 或 GRUB 菜单
+    "<wait><wait><wait><wait><wait>",
+    # 按 e 进入 GRUB 编辑模式
     "e",
-    # 等待编辑界面加载
+    # 等待 GRUB 编辑界面
     "<wait><wait><wait>",
     # 按 End 跳到行末
-    "<end><wait><wait>",
-    # 添加空格和 autoinstall 参数
+    "<end>",
+    # 添加 autoinstall 参数
     " autoinstall ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/",
     # 按 Ctrl+X 启动
     "<ctrl-x>"
@@ -63,11 +65,11 @@ source "vmware-iso" "ubuntu-24-server" {
   shutdown_command = "echo '${var.ssh_password}' | sudo -S shutdown -P now"
   shutdown_timeout = "15m"
 
-  # VMX 额外配置
+  # VMX 额外配置 - 确保 CD-ROM 优先启动
   vmx_data = {
-    "bios.bootOrder"             = "cd"
-    "firmware"                   = "efi"
-    "uefi.secureBoot.enabled"    = "FALSE"
+    "bios.bootOrder"              = "cd"
+    "firmware"                    = "efi"
+    "uefi.secureBoot.enabled"     = "FALSE"
     "guestinfo.local-hostname"    = "ubuntu-server"
   }
 
