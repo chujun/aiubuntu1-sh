@@ -22,6 +22,7 @@
 - [九、用户提示词清单](#九用户提示词清单)
 - [十、难点与挑战](#十难点与挑战)
 - [十一、经验总结](#十一经验总结)
+- [附录 A：关键错误截图与代码改动点](#附录-a关键错误截图与代码改动点)
 
 ---
 
@@ -189,6 +190,79 @@ network:
 | VMware 网卡名不稳定 | 可能是 `ens33`、`ens160`、`enp3s0` | 使用 `match: name: "en*"` 或明确 MAC 匹配 |
 | `DataSourceNone` 不一定总是失败 | 安装后新系统首次启动可能没有 datasource | 结合 Curtin 安装日志和 SSH 结果判断 |
 | DHCP 租约不等于系统真实 IP | Packer 可能从 VMware 租约读到旧 IP | 必要时在 VNC 中执行 `ip a` 验证 |
+
+---
+
+## 附录 A：关键错误截图与代码改动点
+
+本附录面向研究报告读者，把关键错误界面与配置修复点并排展示，方便快速建立“现象 -> 原因 -> 修复”的对应关系。
+
+### A.1 GRUB NoCloud 参数
+
+![GRUB NoCloud 参数](packer-build-debug-images/01-grub-nocloud-params.png)
+
+**含义：** `autoinstall` 和 `ds=nocloud-net\;s=http://...` 必须追加在 `linux /casper/vmlinuz` 行上。这里的 `\;` 是 GRUB 转义分号，不是多余字符。
+
+**关键代码：**
+
+```hcl
+"<bs><bs><bs><bs><wait> autoinstall ds=nocloud-net\\;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ ---<wait><f10>"
+```
+
+### A.2 cloud-init network stage
+
+![cloud-init network stage](packer-build-debug-images/02-cloud-init-network-stage.png)
+
+**含义：** 这是 live installer 启动过程中的网络阶段。若长时间卡住，应检查 NoCloud HTTP seed、VMnet8、防火墙、guest 网卡配置。
+
+### A.3 Curtin 安装推进
+
+![Curtin 安装推进](packer-build-debug-images/03-curtin-install-progress.png)
+
+**含义：** 出现 Curtin 安装日志是重大正向信号，说明安装器已经读取 `user-data` 并进入无人值守安装，不再是 GRUB 或语言选择问题。
+
+### A.4 安装后 DataSourceNone 登录页
+
+![DataSourceNone 登录页](packer-build-debug-images/04-datasource-none-login.png)
+
+**含义：** 安装完成后新系统显示 `DataSourceNone` 不一定是失败。此时要关注 Packer 是否能 SSH 登录，以及目标系统是否有真实 IP。
+
+### A.5 SSH 密码、sshd 策略与目标网卡
+
+**Packer SSH 密码：**
+
+```hcl
+variable "ssh_password" {
+  type      = string
+  default   = "ubuntucj"
+  sensitive = true
+  description = "SSH 密码"
+}
+```
+
+**目标系统 SSH 策略：**
+
+```yaml
+late-commands:
+  - curtin in-target --target=/target -- mkdir -p /etc/ssh/sshd_config.d
+  - curtin in-target --target=/target -- bash -c "printf 'PasswordAuthentication yes\nKbdInteractiveAuthentication yes\nUsePAM yes\n' > /etc/ssh/sshd_config.d/99-packer.conf"
+  - curtin in-target --target=/target -- systemctl enable ssh
+```
+
+**目标系统 DHCP 网卡匹配：**
+
+```yaml
+network:
+  version: 2
+  ethernets:
+    primary:
+      match:
+        name: "en*"
+      dhcp4: true
+      optional: true
+```
+
+**最终结论：** 本次最终失败点不是 Packer 找不到 IP，而是目标系统真实网卡没有按 `ens33` 配置 DHCP。改为 `en*` 后，Packer 成功输出 `Connected to SSH!`。
 
 ---
 
