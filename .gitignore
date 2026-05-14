@@ -12,6 +12,9 @@ my-skills/my-skills-sync/*.log
 *~
 .DS_Store
 
+# 日志文件
+*.log
+
 # 操作系统
 Thumbs.db
 ehthumbs.db
@@ -24,6 +27,7 @@ Desktop.ini
 
 # Packer 构建输出
 output/
+packer_cache/
 
 # 压缩缓存
 *.zip
