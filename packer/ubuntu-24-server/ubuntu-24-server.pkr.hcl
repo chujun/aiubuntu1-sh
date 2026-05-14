@@ -28,9 +28,16 @@ source "vmware-iso" "ubuntu-24-server" {
   boot_wait = "28s"
 
   # boot_command - GRUB 编辑模式
+  # 在 GRUB 编辑模式下:
+  # 1. 按 e 进入编辑模式
+  # 2. 按向下箭头到 linux 行
+  # 3. 按右箭头到行末
+  # 4. 添加 autoinstall 参数
+  # 5. 按 F10 启动
   boot_command = [
     "e<wait><wait><wait><wait><wait><wait><wait><wait>",
-    "<end><wait><wait><wait><wait><wait>",
+    "<down><wait><wait><wait><wait>",
+    "<right><right><right><right><right><right><right><right><right><right><wait>",
     " autoinstall ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/",
     "<f10>"
   ]
