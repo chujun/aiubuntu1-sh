@@ -1,6 +1,15 @@
 # Ubuntu 24.04 Server Packer 构建配置
 # 使用 Cloud-Init 进行无人值守安装
 
+packer {
+  required_plugins {
+    vmware = {
+      version = ">= 1.0.0"
+      source  = "github.com/hashicorp/vmware"
+    }
+  }
+}
+
 source "vmware-iso" "ubuntu-24-server" {
   # 基本配置
   vm_name       = var.vm_name
