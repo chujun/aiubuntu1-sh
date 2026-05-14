@@ -28,11 +28,12 @@ source "vmware-iso" "ubuntu-24-server" {
   boot_wait = "20s"
 
   # boot_command - 在 GRUB 倒计时结束前按键
+  # 使用 F10 代替 Ctrl+X 启动
   boot_command = [
     "e<wait><wait><wait><wait>e<wait><wait><wait><wait>e",
     "<end><wait><wait><wait>",
     " autoinstall ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/",
-    "<ctrl-x>"
+    "<f10>"
   ]
 
   # 磁盘配置
