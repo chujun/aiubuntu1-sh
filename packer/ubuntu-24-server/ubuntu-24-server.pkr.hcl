@@ -30,8 +30,8 @@ source "vmware-iso" "ubuntu-24-server" {
   # boot_command - 在 GRUB 倒计时结束前按键
   # 使用 F10 代替 Ctrl+X 启动
   boot_command = [
-    "e<wait><wait><wait><wait>e<wait><wait><wait><wait>e",
-    "<end><wait><wait><wait>",
+    "e<wait><wait><wait><wait><wait>",
+    "<end><wait><wait><wait><wait>",
     " autoinstall ds=nocloud-net;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/",
     "<f10>"
   ]
