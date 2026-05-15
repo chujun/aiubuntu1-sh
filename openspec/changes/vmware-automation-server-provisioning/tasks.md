@@ -61,6 +61,11 @@
 >   - Cloud-Init 显式配置 EFI、`/boot`、LVM VG、根逻辑卷和数据逻辑卷
 >   - 根分区 `/` 分配 20GB，降低系统包、日志、缓存增长导致根分区不足的风险
 >   - `/data` 使用 LVM 剩余空间，而不是硬编码 25GB，避免 EFI、`/boot` 和 LVM 元数据导致容量超配
+> - **首次成功构建记录**：
+>   - 日期：2026-05-15
+>   - Packer build 耗时：11 分 48 秒
+>   - 产物目录：`packer/ubuntu-24-server/output/ubuntu-24-04-server`
+>   - 成功条件：VMware NAT DHCP 已将 `00:50:56:24:15:01` 静态保留到 `192.168.40.150`，Packer 成功连接 SSH 并完成 `/data` 挂载与磁盘容量验证
 
 ## 3. Ansible 控制节点配置
 

@@ -175,6 +175,15 @@ ansible-galaxy collection install community.general
 - Packer 构建时验证 `/data` 挂载和 `/`、`/data` 容量输出，避免分区配置静默失效
 - Packer 缓存、构建输出和日志不纳入 Git，只保留可复现的 HCL 与 Cloud-Init 配置
 
+**首次成功构建基准**：
+- 日期：2026-05-15
+- 命令：`build-debug.bat`，内部先执行 `packer validate .`，再执行 `packer build .`
+- 结果：构建成功，产物目录为 `packer/ubuntu-24-server/output/ubuntu-24-04-server`
+- 耗时：Packer 报告 `11 minutes 48 seconds`
+- 环境：Windows 11 + VMware Workstation Pro 25H2（日志识别 `25.0.0`）+ Packer `1.15.3` + VMware 插件 `v1.2.0`
+- 关键复现条件：本地 Ubuntu 24.04.4 Server ISO、40GB 虚拟磁盘、2 vCPU、4096MB 内存、`VMnet8` NAT、`vmxnet3`、构建 MAC `00:50:56:24:15:01`、构建 SSH IP `192.168.40.150`
+- 验证结果：Packer 成功连接 SSH，`/` 约 20G，`/data` 约 19G，`/data` 挂载到 `ubuntu--vg-data--lv`
+
 ## Risks / Trade-offs
 
 | Risk | Impact | Mitigation |
