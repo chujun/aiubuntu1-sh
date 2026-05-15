@@ -71,12 +71,12 @@
 
 > 🔒 阻塞：2.8 完成后才能执行 3.1-3.2；3.3-3.5 可提前编写
 
-- [ ] 3.1 在控制节点 VM 中安装 Ansible（pip3 install ansible ansible-core）
-- [ ] 3.2 安装 ansible-galaxy collections：`community.general`
+- [x] 3.1 在控制节点 VM 中安装 Ansible（pip3 install ansible ansible-core）
+- [x] 3.2 安装 ansible-galaxy collections：`community.general`
 - [x] 3.3 创建 `ansible/` 项目目录结构
 - [x] 3.4 编写 `ansible.cfg` 配置文件
 - [x] 3.5 创建 Git 仓库并初始化（用于配置版本化）
-- [ ] 3.6 验证 Ansible 安装：`ansible --version`
+- [x] 3.6 验证 Ansible 安装：`ansible --version`
 
 ## 4. Ansible Inventory 配置
 
