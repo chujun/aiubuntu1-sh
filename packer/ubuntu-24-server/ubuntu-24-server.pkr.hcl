@@ -4,7 +4,8 @@
 packer {
   required_plugins {
     vmware = {
-      version = ">= 1.0.0"
+      # 固定到已验证的 1.2.x 系列，避免未来插件不兼容变更破坏构建。
+      version = "~> 1.2.0"
       source  = "github.com/hashicorp/vmware"
     }
   }
@@ -42,14 +43,15 @@ source "vmware-iso" "ubuntu-24-server" {
   memory = var.memory
 
   # 网络配置
-  network_adapter_type      = "e1000e"
-  network                  = var.network_bridge
+  # Ubuntu 24 自带 vmxnet3 驱动，性能和虚拟化集成优于 e1000e。
+  network_adapter_type = "vmxnet3"
+  network              = var.network_bridge
 
   # SSH 配置
-  ssh_username         = var.ssh_username
-  ssh_password         = var.ssh_password
-  ssh_port             = 22
-  ssh_timeout          = "30m"
+  ssh_username           = var.ssh_username
+  ssh_password           = var.ssh_password
+  ssh_port               = 22
+  ssh_timeout            = "30m"
   ssh_handshake_attempts = 100
 
   # 关机命令 - 优雅关机
@@ -58,10 +60,12 @@ source "vmware-iso" "ubuntu-24-server" {
 
   # VMX 额外配置
   vmx_data = {
-    "bios.bootOrder"              = "cd"
-    "firmware"                    = "efi"
-    "uefi.secureBoot.enabled"     = "FALSE"
-    "guestinfo.local-hostname"    = "ubuntu-server"
+    "bios.bootOrder"           = "cd"
+    "firmware"                 = "efi"
+    "uefi.secureBoot.enabled"  = "FALSE"
+    "guestinfo.local-hostname" = "ubuntu-server"
+    # 暴露稳定磁盘 UUID，便于后续 Linux/Ansible 自动化识别磁盘。
+    "disk.EnableUUID" = "TRUE"
   }
 
   # 输出目录
@@ -69,7 +73,6 @@ source "vmware-iso" "ubuntu-24-server" {
 
   # VMware Tools 上传
   tools_upload_flavor = "linux"
-  tools_mode = "upload"
 }
 
 build {
@@ -86,11 +89,14 @@ build {
   }
 
   # 验证 SSH 连接
+  # Packer 构建期使用密码 SSH；镜像交付前移除临时 sshd 配置，避免克隆机默认允许密码登录。
   provisioner "shell" {
     inline = [
       "echo 'SSH connection verified'",
       "hostname",
-      "cat /etc/os-release | head -3"
+      "cat /etc/os-release | head -3",
+      "sudo rm -f /etc/ssh/sshd_config.d/99-packer.conf",
+      "sudo systemctl reload ssh || sudo systemctl restart ssh"
     ]
   }
 }

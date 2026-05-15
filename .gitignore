@@ -26,8 +26,13 @@ Desktop.ini
 *.sublime-*
 
 # Packer 构建输出
+# 构建产物、缓存和调试日志包含本机路径/临时端口信息，且会频繁变化；只保留可复现的 HCL 与 http 配置入库。
 output/
 packer_cache/
+packer/**/output/
+packer/**/packer_cache/
+packer/**/*.log
+packer/**/packer_log.txt
 
 # 压缩缓存
 *.zip
