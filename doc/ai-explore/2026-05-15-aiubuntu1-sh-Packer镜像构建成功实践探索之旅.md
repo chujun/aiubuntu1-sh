@@ -289,6 +289,101 @@ echo '${var.ssh_password}' | sudo -S -p '' ...
 | 根分区 | 约 20G |
 | `/data` | 约 19G |
 
+### 7.6 关键截图证据
+
+本节记录本次成功前后最重要的 VNC 截图证据。截图文件沿用已有目录：
+
+```text
+doc/ai-explore/packer-build-debug-images/
+```
+
+当前工作区尚未保存这些会话截图文件；建议从会话截图或本地截图工具导出后保存为以下文件名，Markdown 引用方式与 2026-05-14 文档保持一致：
+
+```text
+05-subiquity-bootloader-error.png
+06-installed-vm-wrong-dhcp-ip.png
+07-installed-vm-fixed-mac-dynamic-ip.png
+08-success-build-log-artifacts.png
+```
+
+#### 7.6.1 安装器 bootloader 分区错误截图
+
+![Subiquity bootloader partition error](packer-build-debug-images/05-subiquity-bootloader-error.png)
+
+截图要点：
+
+- VNC 中出现 `autoinstall config did not create needed bootloader partition`。
+- 这证明失败发生在 Cloud-Init/Subiquity 存储配置应用阶段，不是 Packer SSH 阶段。
+- 该截图对应的修复点是将 `grub_device: true` 放到 EFI 分区配置上，确保安装器能识别启动分区。
+
+相关日志查看命令：
+
+```powershell
+Get-Content -Encoding UTF8 -Tail 200 .\packer\ubuntu-24-server\packer_debug.log
+```
+
+#### 7.6.2 安装成功但 DHCP IP 与 Packer 连接目标不一致截图
+
+![Installed VM wrong DHCP IP](packer-build-debug-images/06-installed-vm-wrong-dhcp-ip.png)
+
+截图要点：
+
+- VM 已进入 Ubuntu 24.04.4 LTS 登录后系统，说明 OS 安装本身已经成功。
+- `ip a` 显示网卡 `ens160` 获取到 `192.168.40.140/24` 或类似动态地址。
+- 同期 Packer 日志仍尝试连接旧地址，例如 `192.168.40.138`，说明问题是 IP 探测/租约错误，而不是安装失败。
+
+截图内核查命令：
+
+```bash
+ip a
+```
+
+宿主机日志核查命令：
+
+```powershell
+Select-String -Path .\packer\ubuntu-24-server\packer_debug.log -Pattern "Attempting SSH connection|Detected IP|Using SSH communicator"
+```
+
+#### 7.6.3 固定 MAC 生效但 DHCP 静态保留未生效截图
+
+![Installed VM fixed MAC dynamic IP](packer-build-debug-images/07-installed-vm-fixed-mac-dynamic-ip.png)
+
+截图要点：
+
+- `ip a` 显示 MAC 已固定为 `00:50:56:24:15:01`。
+- 但 DHCP 实际分配 IP 是 `192.168.40.141/24`，而 Packer 配置连接 `192.168.40.150`。
+- 这证明 Packer HCL 中 `ethernet0.address` 已生效，真正缺失的是 VMware NAT DHCP reservation。
+
+宿主机验证命令：
+
+```powershell
+Select-String -Path 'C:\ProgramData\VMware\vmnetdhcp.conf' -Pattern 'PACKER DHCP RESERVATION|00:50:56:24:15:01|192.168.40.150' -Context 1,1
+```
+
+修复脚本：
+
+```powershell
+python .\packer\ubuntu-24-server\configure_vmware_dhcp_reservation.py --dry-run
+python .\packer\ubuntu-24-server\configure_vmware_dhcp_reservation.py
+```
+
+#### 7.6.4 构建成功日志截图
+
+![Successful Packer build artifacts](packer-build-debug-images/08-success-build-log-artifacts.png)
+
+截图要点：
+
+- Packer 输出 `Build 'ubuntu-24-server.vmware-iso.ubuntu-24-server' finished after 11 minutes 48 seconds.`。
+- 产物目录为 `output/ubuntu-24-04-server`。
+- 产物文件数为 16，包括 `disk.vmdk`、`disk-s001.vmdk` 到 `disk-s011.vmdk`、`.vmx`、`.nvram`、`.vmsd`、`.vmxf`。
+
+复现命令：
+
+```powershell
+Get-Content -Encoding UTF8 -Tail 120 .\packer\ubuntu-24-server\packer_debug.log
+Get-ChildItem -Force .\packer\ubuntu-24-server\output\ubuntu-24-04-server
+```
+
 ---
 
 ## 八、关键决策记录
