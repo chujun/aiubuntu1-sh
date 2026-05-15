@@ -1,0 +1,177 @@
+#cloud-config
+# Ubuntu 24.04 Desktop Autoinstall 配置文件
+# 用于 Packer 无人值守安装
+
+autoinstall:
+  version: 1
+
+  # --------------------------------------------------------
+  # Desktop 安装源 - 使用 Ubuntu Desktop ISO 的最小桌面源
+  # --------------------------------------------------------
+  source:
+    id: ubuntu-desktop-minimal
+
+  # --------------------------------------------------------
+  # 身份配置 - 用户/主机信息
+  # --------------------------------------------------------
+  identity:
+    hostname: ubuntu-desktop
+    username: ubuntu
+    password: $6$7Q6faMv8r3uqGix9$AlCxRApouBwiyqjL6JuBVIHHvKUjDHriPbM.k5zSSA3yTJTBmNnbcKC4k6DNh1O/hpuBiPPao4cqoHkHCBVDN/
+
+  # --------------------------------------------------------
+  # 存储分区配置 - 40GB 磁盘：20GB 给根分区，其余空间给 /data
+  # EFI、/boot 和 LVM 元数据会占用少量空间，因此 /data 使用剩余空间而不是硬编码 25GB。
+  # --------------------------------------------------------
+  storage:
+    config:
+      - id: disk0
+        type: disk
+        match:
+          size: largest
+        ptable: gpt
+        wipe: superblock-recursive
+        preserve: false
+
+      - id: efi-partition
+        type: partition
+        device: disk0
+        size: 512M
+        flag: boot
+        number: 1
+        wipe: superblock
+        preserve: false
+        grub_device: true
+
+      - id: efi-format
+        type: format
+        volume: efi-partition
+        fstype: fat32
+        preserve: false
+
+      - id: efi-mount
+        type: mount
+        device: efi-format
+        path: /boot/efi
+
+      - id: boot-partition
+        type: partition
+        device: disk0
+        size: 1G
+        number: 2
+        wipe: superblock
+        preserve: false
+
+      - id: boot-format
+        type: format
+        volume: boot-partition
+        fstype: ext4
+        preserve: false
+
+      - id: boot-mount
+        type: mount
+        device: boot-format
+        path: /boot
+
+      - id: lvm-partition
+        type: partition
+        device: disk0
+        size: -1
+        flag: lvm
+        number: 3
+        wipe: superblock
+        preserve: false
+
+      - id: ubuntu-vg
+        type: lvm_volgroup
+        name: ubuntu-vg
+        devices:
+          - lvm-partition
+        preserve: false
+
+      - id: root-lv
+        type: lvm_partition
+        name: root-lv
+        volgroup: ubuntu-vg
+        size: 20G
+        preserve: false
+
+      - id: root-format
+        type: format
+        volume: root-lv
+        fstype: ext4
+        preserve: false
+
+      - id: root-mount
+        type: mount
+        device: root-format
+        path: /
+
+      - id: data-lv
+        type: lvm_partition
+        name: data-lv
+        volgroup: ubuntu-vg
+        size: -1
+        preserve: false
+
+      - id: data-format
+        type: format
+        volume: data-lv
+        fstype: ext4
+        preserve: false
+
+      - id: data-mount
+        type: mount
+        device: data-format
+        path: /data
+
+  # --------------------------------------------------------
+  # SSH 配置
+  # --------------------------------------------------------
+  ssh:
+    install-server: true
+    allow-pw: true
+
+  # --------------------------------------------------------
+  # 网络配置 - DHCP 自动获取 IP
+  # --------------------------------------------------------
+  network:
+    version: 2
+    ethernets:
+      primary:
+        match:
+          name: "en*"
+        dhcp4: true
+        optional: true
+
+  # --------------------------------------------------------
+  # APT / 桌面工具配置
+  # --------------------------------------------------------
+  package-update: true
+  package-upgrade: true
+  packages:
+    - openssh-server
+    - cloud-init
+    - ubuntu-desktop-minimal
+    - open-vm-tools
+    - open-vm-tools-desktop
+    - curl
+    - wget
+
+  # --------------------------------------------------------
+  # 晚期命令 - 安装完成后执行
+  # --------------------------------------------------------
+  late-commands:
+    - sleep 5
+    - curtin in-target --target=/target -- mkdir -p /etc/ssh/sshd_config.d
+    - curtin in-target --target=/target -- bash -c "printf 'PasswordAuthentication yes\nKbdInteractiveAuthentication yes\nUsePAM yes\n' > /etc/ssh/sshd_config.d/99-packer.conf"
+    - curtin in-target --target=/target -- systemctl enable ssh
+    - curtin in-target --target=/target -- systemctl enable gdm3
+    - curtin in-target --target=/target -- cloud-init clean --logs
+
+  # --------------------------------------------------------
+  # 错误处理
+  # --------------------------------------------------------
+  error-commands:
+    - echo "Installation failed"
+    - cat /var/log/syslog
