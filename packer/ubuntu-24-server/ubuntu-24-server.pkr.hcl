@@ -101,8 +101,8 @@ build {
       "cat /etc/os-release | head -3",
       "findmnt /data",
       "df -h / /data",
-      "sudo rm -f /etc/ssh/sshd_config.d/99-packer.conf",
-      "sudo systemctl reload ssh || sudo systemctl restart ssh"
+      "echo '${var.ssh_password}' | sudo -S -p '' rm -f /etc/ssh/sshd_config.d/99-packer.conf",
+      "echo '${var.ssh_password}' | sudo -S -p '' systemctl reload ssh || echo '${var.ssh_password}' | sudo -S -p '' systemctl restart ssh"
     ]
   }
 }
