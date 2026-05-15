@@ -384,6 +384,124 @@ Get-Content -Encoding UTF8 -Tail 120 .\packer\ubuntu-24-server\packer_debug.log
 Get-ChildItem -Force .\packer\ubuntu-24-server\output\ubuntu-24-04-server
 ```
 
+### 7.7 关键错误截图与代码改动点对照
+
+这一节把会话中的关键截图信息和最终代码改动点放在一起，方便读者从“看到什么错误”快速追到“为什么错、改了哪里”。
+
+| 截图/现象 | 根因判断 | 关键改动文件 | 改动点 |
+|-----------|----------|--------------|--------|
+| `05-subiquity-bootloader-error.png`：VNC 显示 `autoinstall config did not create needed bootloader partition` | Subiquity 没识别到可用于安装 bootloader 的 EFI 分区 | `packer/ubuntu-24-server/http/user-data` | 在 `efi-partition` 上设置 `grub_device: true`，并保持 EFI 挂载到 `/boot/efi` |
+| VNC 已进入 Ubuntu 登录页，但 Packer 仍卡在 SSH | VMware DHCP lease 探测命中过期或错误 IP | `packer/ubuntu-24-server/ubuntu-24-server.pkr.hcl`、`configure_vmware_dhcp_reservation.py` | Packer 使用固定 `ssh_host`，VMX 固定构建 MAC，宿主机 DHCP reservation 绑定 `00:50:56:24:15:01 -> 192.168.40.150` |
+| `ip a` 显示 MAC 已固定，但 IP 仍是 `192.168.40.141/24` | HCL 固定 MAC 已生效，但 VMware NAT DHCP 配置未写入或服务未重启 | `packer/ubuntu-24-server/configure_vmware_dhcp_reservation.py` | Python 脚本写入 reservation block，先备份 `vmnetdhcp.conf`，再重启 `VMnetDHCP` 服务 |
+| SSH 已连接后 provisioner 报 `sudo: a terminal is required to read the password` | Packer shell provisioner 是非交互环境，直接 `sudo` 无法读取密码 | `packer/ubuntu-24-server/ubuntu-24-server.pkr.hcl` | 将清理临时 SSH 配置、reload SSH、关机命令改为 `echo '${var.ssh_password}' \| sudo -S -p '' ...` |
+| 构建成功后需要确认镜像空间分配 | 40GB 虚拟盘中 EFI、`/boot`、LVM 元数据会占用少量空间，`/data` 不适合硬编码 25G | `packer/ubuntu-24-server/http/user-data` | 根分区固定 `20G`，`/data` 使用 LVM 剩余空间 `size: -1`，实际约 19G |
+
+#### 7.7.1 bootloader 错误对应的 storage 改动
+
+错误截图里的关键信息是安装器明确报 bootloader 分区缺失：
+
+```text
+autoinstall config did not create needed bootloader partition
+```
+
+最终配置没有继续堆复杂条件，而是保留 GPT + EFI + `/boot` + LVM 的清晰结构：
+
+```yaml
+- id: efi-partition
+  type: partition
+  device: disk0
+  size: 512M
+  flag: boot
+  number: 1
+  grub_device: true
+
+- id: efi-mount
+  type: mount
+  device: efi-format
+  path: /boot/efi
+```
+
+同时，磁盘空间按可复现的服务器模板方式分配：
+
+```yaml
+- id: root-lv
+  type: lvm_partition
+  name: root-lv
+  volgroup: ubuntu-vg
+  size: 20G
+
+- id: data-lv
+  type: lvm_partition
+  name: data-lv
+  volgroup: ubuntu-vg
+  size: -1
+```
+
+这样读者可以看到两个要点：bootloader 错误不是靠 Packer 参数修复，而是 Cloud-Init storage 里 EFI 分区标记位置的问题；`/data` 使用剩余空间，是为了避开 EFI、`/boot`、LVM 元数据占用导致的硬编码误差。
+
+#### 7.7.2 SSH 连错 IP 对应的 Packer 与 VMware DHCP 改动
+
+会话截图里 VM 已经能登录 Ubuntu，并且 `ip a` 能看到实际网卡地址。这说明 OS 安装成功，问题转移到 Packer 如何找到正确 VM。
+
+Packer HCL 侧固定构建期连接目标：
+
+```hcl
+# 构建期使用 VMware NAT DHCP 的 MAC 静态保留地址，避免 Packer 从旧 DHCP lease 中探测到错误 IP。
+# 注意：该固定 IP 仅用于 Packer SSH，不写入最终 Ubuntu 镜像，避免克隆后发生 IP 冲突。
+ssh_host = var.build_ssh_host
+
+vmx_data = {
+  "disk.EnableUUID"       = "TRUE"
+  "ethernet0.addressType" = "static"
+  "ethernet0.address"     = var.build_mac_address
+}
+```
+
+VMware DHCP 侧通过脚本写入静态保留：
+
+```python
+DHCP_CONF = Path(r"C:\ProgramData\VMware\vmnetdhcp.conf")
+BUILD_IP = "192.168.40.150"
+BUILD_MAC = "00:50:56:24:15:01"
+
+def reservation_block(ip: str, mac: str) -> str:
+    return "\n".join(
+        [
+            "# BEGIN PACKER DHCP RESERVATION",
+            "host packer-ubuntu-24-server {",
+            f"  hardware ethernet {mac};",
+            f"  fixed-address {ip};",
+            "}",
+            "# END PACKER DHCP RESERVATION",
+            "",
+        ]
+    )
+```
+
+这个组合解决的是“构建期可预测 IP”，但没有把静态 IP 写入镜像内部。读者后续克隆镜像时，客户机仍然通过 DHCP 自动获取地址，不会产生克隆机 IP 冲突。
+
+#### 7.7.3 sudo 非交互失败对应的 provisioner 改动
+
+日志中出现：
+
+```text
+sudo: a terminal is required to read the password
+sudo: a password is required
+```
+
+说明 SSH 已经连通，失败发生在 provisioner 命令执行阶段。最终改动是让 `sudo` 从标准输入读取密码：
+
+```hcl
+shutdown_command = "echo '${var.ssh_password}' | sudo -S shutdown -P now"
+
+inline = [
+  "echo '${var.ssh_password}' | sudo -S -p '' rm -f /etc/ssh/sshd_config.d/99-packer.conf",
+  "echo '${var.ssh_password}' | sudo -S -p '' systemctl reload ssh || echo '${var.ssh_password}' | sudo -S -p '' systemctl restart ssh"
+]
+```
+
+这里同时完成了安全收口：构建阶段允许密码 SSH，镜像交付前删除临时 `99-packer.conf` 并重载 SSH，避免模板默认继续开放密码登录。
+
 ---
 
 ## 八、关键决策记录
