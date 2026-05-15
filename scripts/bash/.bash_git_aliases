@@ -1,0 +1,21 @@
+#!/bin/bash
+# Git 快捷命令 - 替代 git alias，使用 g+单字母格式
+# source ~/.bash_git_aliases
+
+gst() { git status "$@"; }
+gco() { git checkout "$@"; }
+gbr() { git branch "$@"; }
+gci() { git commit "$@"; }
+gdf() { git diff "$@"; }
+glg() { git log --oneline --graph --decorate "$@"; }
+glast() { git log -1 HEAD "$@"; }
+gunstage() { git reset HEAD -- "$@"; }
+grs() { git restore "$@"; }
+gsw() { git switch "$@"; }
+gstsh() { git stash "$@"; }
+gstshp() { git stash pop "$@"; }
+gstshl() { git stash list "$@"; }
+gpl() { git pull "$@"; }
+gps() { git push "$@"; }
+gfp() { git fetch --all && git pull "$@"; }
+gcb() { git checkout -b "$@"; }
