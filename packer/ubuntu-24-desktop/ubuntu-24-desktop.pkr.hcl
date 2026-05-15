@@ -90,8 +90,9 @@ build {
     ]
   }
 
-  # 验证 SSH、桌面组件和磁盘挂载。
+  # 验证 SSH、桌面组件和磁盘挂载，并清理模板身份。
   # Packer 构建期使用密码 SSH；镜像交付前移除临时 sshd 配置，避免克隆机默认允许密码登录。
+  # 同时删除 SSH host keys 和 machine-id，让复制出的每台 VMware VM 首次启动时生成唯一身份。
   provisioner "shell" {
     inline = [
       "echo 'SSH connection verified'",
@@ -102,7 +103,11 @@ build {
       "findmnt /data",
       "df -h / /data",
       "echo '${var.ssh_password}' | sudo -S -p '' rm -f /etc/ssh/sshd_config.d/99-packer.conf",
-      "echo '${var.ssh_password}' | sudo -S -p '' systemctl reload ssh || echo '${var.ssh_password}' | sudo -S -p '' systemctl restart ssh"
+      "echo '${var.ssh_password}' | sudo -S -p '' systemctl reload ssh || echo '${var.ssh_password}' | sudo -S -p '' systemctl restart ssh",
+      "echo '${var.ssh_password}' | sudo -S -p '' rm -f /etc/ssh/ssh_host_*",
+      "echo '${var.ssh_password}' | sudo -S -p '' truncate -s 0 /etc/machine-id",
+      "echo '${var.ssh_password}' | sudo -S -p '' rm -f /var/lib/dbus/machine-id",
+      "echo '${var.ssh_password}' | sudo -S -p '' cloud-init clean --logs --seed"
     ]
   }
 }

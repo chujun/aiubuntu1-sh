@@ -86,3 +86,26 @@
 - **当** Packer 完成 ubuntu-24-server 的构建时
 - **则** 输出文件遵循模式 `ubuntu-24-server-{timestamp}.vmx`
 - **且** 元数据文件包含构建时间戳和使用的 Packer 版本
+
+---
+
+### 需求：从 Packer 输出目录复制创建 VMware VM 副本
+
+系统必须提供脚本，将 Packer 生成的完整 VMware VM 输出目录复制为一个或多个可独立打开的 VM 目录。
+
+#### 场景：复制多个 VM 副本
+- **当** 执行 `python scripts/vmware/copy_packer_vm.py --source-dir <packer-output> --destination-root <vm-root> --vm-names aiubuntu-s1,aiubuntu-s2`
+- **则** 脚本为每个 VM 名称复制完整 Packer 输出目录
+- **且** 每个目标目录包含重命名后的 `<vm-name>.vmx`
+- **且** VMX 中的 `displayName` 更新为目标 VM 名称
+
+#### 场景：VMX 身份去重
+- **当** 脚本复制 VMX 文件时
+- **则** 删除 `uuid.bios`、`uuid.location`、`vc.uuid` 等 UUID 字段
+- **且** 删除构建期固定 MAC 或生成 MAC 字段
+- **且** 将 `ethernet0.addressType` 设置为 `generated`，由 VMware 为副本生成唯一 MAC
+
+#### 场景：保护已有目标目录
+- **当** 目标 VM 目录已存在且未传入 `--force`
+- **则** 脚本拒绝覆盖并返回错误
+- **且** 不修改已有目标目录内容

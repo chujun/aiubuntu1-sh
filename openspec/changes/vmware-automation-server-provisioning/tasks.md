@@ -31,6 +31,7 @@
 - [x] 2.8 执行 `packer build` 构建 Ubuntu Server 基础镜像
 - [x] 2.9 验证镜像可正常启动并通过 Cloud-Init 完成初始化
 - [x] 2.10 创建 `packer/ubuntu-24-desktop/` 目录和配置（Desktop 版本）
+- [x] 2.11 编写复制 Packer 输出 VM 文件夹的脚本
 
 > **📝 设计决策记录：**
 > - **用户配置策略**：保留 ubuntu 用户 + root 用户并行存在，后续 Ansible/SSH 操作使用 root 用户连接
