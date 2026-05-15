@@ -47,6 +47,19 @@
 >   - 当前配置：DHCP 自动获取 IP
 >   - 计划方案：VMware NAT DHCP 根据 MAC 地址分配固定 IP
 >   - 理由：先验证 DHCP 动态分配是否满足需求，后续再考虑静态保留
+> - **Packer 构建优化策略**：
+>   - VMware 插件版本固定为 `~> 1.2.0`，降低插件升级导致的兼容性风险
+>   - 网络适配器使用 `vmxnet3`，适配 Ubuntu 24 的 VMware 虚拟化驱动能力
+>   - VMX 增加 `disk.EnableUUID = "TRUE"`，便于后续 Linux/Ansible 稳定识别磁盘
+>   - Packer 构建产物、缓存和日志不纳入 Git，只保留 HCL 与 Cloud-Init 配置
+> - **SSH 临时访问策略**：
+>   - Packer 构建期允许密码 SSH 连接，确保自动化 provisioner 可登录
+>   - 镜像交付前移除 `/etc/ssh/sshd_config.d/99-packer.conf` 并 reload/restart SSH，避免克隆机默认保留密码认证
+> - **磁盘分区策略**：
+>   - 虚拟磁盘总量保持 40GB
+>   - Cloud-Init 显式配置 EFI、`/boot`、LVM VG、根逻辑卷和数据逻辑卷
+>   - 根分区 `/` 分配 20GB，降低系统包、日志、缓存增长导致根分区不足的风险
+>   - `/data` 使用 LVM 剩余空间，而不是硬编码 25GB，避免 EFI、`/boot` 和 LVM 元数据导致容量超配
 
 ## 3. Ansible 控制节点配置
 

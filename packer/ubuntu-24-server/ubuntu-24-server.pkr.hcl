@@ -95,6 +95,8 @@ build {
       "echo 'SSH connection verified'",
       "hostname",
       "cat /etc/os-release | head -3",
+      "findmnt /data",
+      "df -h / /data",
       "sudo rm -f /etc/ssh/sshd_config.d/99-packer.conf",
       "sudo systemctl reload ssh || sudo systemctl restart ssh"
     ]

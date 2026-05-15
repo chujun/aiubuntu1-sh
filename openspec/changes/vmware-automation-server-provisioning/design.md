@@ -156,6 +156,23 @@ ansible-galaxy collection install community.general
 - 与 Ansible Playbook 的 YAML 语法保持一致，降低学习成本
 - 支持复杂变量定义（如 group_vars、host_vars）
 
+### Decision 6: Ubuntu Server 镜像磁盘与 Packer 构建优化
+
+**选择**：Ubuntu Server 基础镜像保持 40GB 虚拟磁盘，Cloud-Init 使用显式 LVM 存储配置：EFI 512MB、`/boot` 1GB、根分区 20GB、`/data` 使用 VG 剩余空间。
+
+**理由**：
+- 根分区 20GB 比 15GB 更适合后续系统包、日志、缓存和基础工具增长，降低根分区不足风险
+- `/data` 使用剩余空间，方便承载应用数据、模型文件、Docker 数据等较大内容
+- LVM 保留后续扩容和调整空间的弹性，适合未来从学习环境演进到更接近生产的服务器模板
+
+**Packer/VMware 优化约束**：
+- VMware 插件版本固定在已验证的 `~> 1.2.0` 系列，降低未来插件不兼容风险
+- 虚拟网卡使用 `vmxnet3`，利用 Ubuntu 24 自带驱动获得更好的 VMware 虚拟化性能
+- VMX 启用 `disk.EnableUUID = "TRUE"`，便于 Linux/Ansible 后续稳定识别磁盘
+- Packer 构建期允许密码 SSH 以完成自动化连接，镜像交付前移除临时 sshd 密码认证配置
+- Packer 构建时验证 `/data` 挂载和 `/`、`/data` 容量输出，避免分区配置静默失效
+- Packer 缓存、构建输出和日志不纳入 Git，只保留可复现的 HCL 与 Cloud-Init 配置
+
 ## Risks / Trade-offs
 
 | Risk | Impact | Mitigation |
@@ -165,6 +182,7 @@ ansible-galaxy collection install community.general
 | Ansible 控制节点单点故障 | 独立 VM 环境异常时无法执行配置管理 | 定期备份 inventory 和 playbooks，Ansible 状态由 Git 管理 |
 | 多 OS 适配复杂度超预期 | Debian/Ubuntu/CentOS 的包管理、服务的差异可能比预期大 | Role 内设计 OS 适配层，初期聚焦 Ubuntu，后续逐步扩展 |
 | Packer 构建失败排查困难 | 涉及 Packer、VMware、Cloud-Init 多个层面，调试复杂 | 保留详细的构建日志，分层排查（先验证 ISO 挂载，再验证 Cloud-Init） |
+| 显式存储配置复杂度 | Cloud-Init 存储配置比默认 LVM layout 更长，维护门槛更高 | 在 `user-data` 中保留分区原因注释，并通过 PyYAML、`packer validate`、`findmnt /data`、`df -h / /data` 分层验证 |
 
 ## Migration Plan
 

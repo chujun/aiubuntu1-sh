@@ -8,7 +8,7 @@
 
 1. **新增 Packer 镜像构建流程**：使用 Packer + Cloud-Init 自动构建基础 OS 镜像（Ubuntu 24 Server/Desktop），替代纯手动 VM 创建
 2. **新增 Ansible 配置管理体系**：基于 Role 分层组织（common/runtime/workload）的配置管理框架，支持 SSH、NTP、防火墙、Docker、Java、Node、AI 应用等软件栈
-3. **新增 Cloud-Init 无人值守初始化**：通过 Cloud-Init 自动完成 OS 用户创建、SSH 公钥配置、主机名/网络设置
+3. **新增 Cloud-Init 无人值守初始化**：通过 Cloud-Init 自动完成 OS 用户创建、SSH 公钥配置、主机名/网络设置，并显式配置 40GB 系统盘分区（根分区 20GB，`/data` 使用剩余空间）
 4. **新增多 OS 适配层**：在 Ansible Role 内通过 OS 条件分支（debian.yml/redhat.yml）支持 Ubuntu/Debian/CentOS 等多发行版
 
 ## Capabilities

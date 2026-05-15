@@ -14,11 +14,110 @@ autoinstall:
     password: $6$7Q6faMv8r3uqGix9$AlCxRApouBwiyqjL6JuBVIHHvKUjDHriPbM.k5zSSA3yTJTBmNnbcKC4k6DNh1O/hpuBiPPao4cqoHkHCBVDN/
 
   # --------------------------------------------------------
-  # 存储分区配置 - 使用 LVM 自动分区
+  # 存储分区配置 - 40GB 磁盘：20GB 给根分区，其余空间给 /data
+  # EFI、/boot 和 LVM 元数据会占用少量空间，因此 /data 使用剩余空间而不是硬编码 25GB。
   # --------------------------------------------------------
   storage:
-    layout:
-      name: lvm
+    config:
+      - id: disk0
+        type: disk
+        match:
+          size: largest
+        ptable: gpt
+        wipe: superblock-recursive
+        preserve: false
+        grub_device: true
+
+      - id: efi-partition
+        type: partition
+        device: disk0
+        size: 512M
+        flag: boot
+        number: 1
+        wipe: superblock
+        preserve: false
+
+      - id: efi-format
+        type: format
+        volume: efi-partition
+        fstype: fat32
+        preserve: false
+
+      - id: efi-mount
+        type: mount
+        device: efi-format
+        path: /boot/efi
+
+      - id: boot-partition
+        type: partition
+        device: disk0
+        size: 1G
+        number: 2
+        wipe: superblock
+        preserve: false
+
+      - id: boot-format
+        type: format
+        volume: boot-partition
+        fstype: ext4
+        preserve: false
+
+      - id: boot-mount
+        type: mount
+        device: boot-format
+        path: /boot
+
+      - id: lvm-partition
+        type: partition
+        device: disk0
+        size: -1
+        flag: lvm
+        number: 3
+        wipe: superblock
+        preserve: false
+
+      - id: ubuntu-vg
+        type: lvm_volgroup
+        name: ubuntu-vg
+        devices:
+          - lvm-partition
+        preserve: false
+
+      - id: root-lv
+        type: lvm_partition
+        name: root-lv
+        volgroup: ubuntu-vg
+        size: 20G
+        preserve: false
+
+      - id: root-format
+        type: format
+        volume: root-lv
+        fstype: ext4
+        preserve: false
+
+      - id: root-mount
+        type: mount
+        device: root-format
+        path: /
+
+      - id: data-lv
+        type: lvm_partition
+        name: data-lv
+        volgroup: ubuntu-vg
+        size: -1
+        preserve: false
+
+      - id: data-format
+        type: format
+        volume: data-lv
+        fstype: ext4
+        preserve: false
+
+      - id: data-mount
+        type: mount
+        device: data-format
+        path: /data
 
   # --------------------------------------------------------
   # SSH 配置

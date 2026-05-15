@@ -26,7 +26,20 @@
 - **当** 执行 `packer build ubuntu-24-server.pkr.hcl` 时
 - **则** Packer 创建一个安装了 Ubuntu 24.04 Server 的 VM
 - **且** VM 配置了最小化软件包（OpenSSH Server、Cloud-Init）
+- **且** VM 使用 `vmxnet3` 网络适配器
+- **且** VMX 配置包含 `disk.EnableUUID = "TRUE"`
 - **且** 生成的 .vmx 和 .vmdk 文件放置在配置的输出目录中
+
+#### 场景：构建后验证磁盘挂载
+- **当** Packer 完成 Cloud-Init 初始化并通过 SSH 连接到 VM 时
+- **则** 构建流程执行 `findmnt /data`
+- **且** 构建流程执行 `df -h / /data`
+- **且** 若 `/data` 未挂载或根分区/数据分区不可访问，构建失败
+
+#### 场景：镜像交付前移除临时密码 SSH 配置
+- **当** Packer 完成 SSH 连接验证后
+- **则** 构建流程移除 `/etc/ssh/sshd_config.d/99-packer.conf`
+- **且** 构建流程 reload 或 restart SSH 服务
 
 #### 场景：ISO 挂载错误导致构建失败
 - **当** 执行 `packer build` 但 Ubuntu ISO 不可访问时

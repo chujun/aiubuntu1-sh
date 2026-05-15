@@ -24,7 +24,7 @@ variable "vm_name" {
 variable "disk_size" {
   type        = number
   default     = 40960
-  description = "磁盘大小 (MB)，默认 40GB"
+  description = "磁盘大小 (MB)，默认 40GB；Cloud-Init 将 20GB 分配给 /，剩余空间分配给 /data"
 }
 
 variable "cpus" {
