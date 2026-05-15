@@ -28,7 +28,14 @@
 - **且** VM 配置了最小化软件包（OpenSSH Server、Cloud-Init）
 - **且** VM 使用 `vmxnet3` 网络适配器
 - **且** VMX 配置包含 `disk.EnableUUID = "TRUE"`
+- **且** VMX 配置包含构建专用固定 MAC，用于 VMware NAT DHCP 静态保留
 - **且** 生成的 .vmx 和 .vmdk 文件放置在配置的输出目录中
+
+#### 场景：构建期 SSH 使用固定 DHCP 保留地址
+- **当** Packer 完成 Ubuntu 安装并等待 SSH 连接时
+- **则** Packer 使用配置的 `ssh_host` 连接 VMware NAT DHCP 为构建 MAC 保留的固定 IP
+- **且** Cloud-Init 不向最终镜像写入该固定 IP
+- **且** 若 VMware DHCP 未为该 MAC 保留对应 IP，构建操作应视为环境配置错误并在 SSH 等待阶段失败
 
 #### 场景：构建后验证磁盘挂载
 - **当** Packer 完成 Cloud-Init 初始化并通过 SSH 连接到 VM 时

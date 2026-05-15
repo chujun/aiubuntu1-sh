@@ -48,6 +48,9 @@ source "vmware-iso" "ubuntu-24-server" {
   network              = var.network_bridge
 
   # SSH 配置
+  # 构建期使用 VMware NAT DHCP 的 MAC 静态保留地址，避免 Packer 从旧 DHCP lease 中探测到错误 IP。
+  # 注意：该固定 IP 仅用于 Packer SSH，不写入最终 Ubuntu 镜像，避免克隆后发生 IP 冲突。
+  ssh_host               = var.build_ssh_host
   ssh_username           = var.ssh_username
   ssh_password           = var.ssh_password
   ssh_port               = 22
@@ -66,13 +69,14 @@ source "vmware-iso" "ubuntu-24-server" {
     "guestinfo.local-hostname" = "ubuntu-server"
     # 暴露稳定磁盘 UUID，便于后续 Linux/Ansible 自动化识别磁盘。
     "disk.EnableUUID" = "TRUE"
+    # 固定构建 VM 的 MAC，用于 VMware NAT DHCP 静态保留，保证 Packer SSH 命中正确客户机。
+    "ethernet0.addressType" = "static"
+    "ethernet0.address"     = var.build_mac_address
   }
 
   # 输出目录
   output_directory = var.output_directory
 
-  # VMware Tools 上传
-  tools_upload_flavor = "linux"
 }
 
 build {

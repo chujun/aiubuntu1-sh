@@ -26,7 +26,6 @@ autoinstall:
         ptable: gpt
         wipe: superblock-recursive
         preserve: false
-        grub_device: true
 
       - id: efi-partition
         type: partition
@@ -36,6 +35,7 @@ autoinstall:
         number: 1
         wipe: superblock
         preserve: false
+        grub_device: true
 
       - id: efi-format
         type: format
@@ -146,6 +146,7 @@ autoinstall:
   packages:
     - openssh-server
     - cloud-init
+    - open-vm-tools
     - curl
     - wget
 

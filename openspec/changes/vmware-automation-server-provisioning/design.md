@@ -169,6 +169,8 @@ ansible-galaxy collection install community.general
 - VMware 插件版本固定在已验证的 `~> 1.2.0` 系列，降低未来插件不兼容风险
 - 虚拟网卡使用 `vmxnet3`，利用 Ubuntu 24 自带驱动获得更好的 VMware 虚拟化性能
 - VMX 启用 `disk.EnableUUID = "TRUE"`，便于 Linux/Ansible 后续稳定识别磁盘
+- Packer 构建 VM 使用固定 MAC，并在 VMware NAT DHCP 中为该 MAC 保留固定构建 IP；Packer 通过 `ssh_host` 显式连接该 IP，避免从旧 DHCP lease 中探测到错误地址
+- 固定构建 IP 只用于 Packer SSH，不写入 Cloud-Init 的最终网络配置，避免镜像克隆后发生 IP 冲突
 - Packer 构建期允许密码 SSH 以完成自动化连接，镜像交付前移除临时 sshd 密码认证配置
 - Packer 构建时验证 `/data` 挂载和 `/`、`/data` 容量输出，避免分区配置静默失效
 - Packer 缓存、构建输出和日志不纳入 Git，只保留可复现的 HCL 与 Cloud-Init 配置
@@ -183,6 +185,7 @@ ansible-galaxy collection install community.general
 | 多 OS 适配复杂度超预期 | Debian/Ubuntu/CentOS 的包管理、服务的差异可能比预期大 | Role 内设计 OS 适配层，初期聚焦 Ubuntu，后续逐步扩展 |
 | Packer 构建失败排查困难 | 涉及 Packer、VMware、Cloud-Init 多个层面，调试复杂 | 保留详细的构建日志，分层排查（先验证 ISO 挂载，再验证 Cloud-Init） |
 | 显式存储配置复杂度 | Cloud-Init 存储配置比默认 LVM layout 更长，维护门槛更高 | 在 `user-data` 中保留分区原因注释，并通过 PyYAML、`packer validate`、`findmnt /data`、`df -h / /data` 分层验证 |
+| VMware DHCP lease 探测错误 | Packer 可能连接到过期 IP，导致安装成功但 SSH 阶段超时 | 固定构建 MAC，在 VMware NAT DHCP 中静态保留构建 IP，并用 `ssh_host` 显式连接 |
 
 ## Migration Plan
 

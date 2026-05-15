@@ -44,9 +44,10 @@
 >   - 注：.vmx 文件位于 Windows 本地，无法从 Linux Ansible 控制节点修改，但不影响（Cloud-Init 首次启动后已生效）
 >   - 理由：VMware Workstation 无 vSphere 自定义规范功能，适合 Ansible 自动化方案
 > - **IP 配置策略**：采用 DHCP 静态保留（待后续验证）
->   - 当前配置：DHCP 自动获取 IP
->   - 计划方案：VMware NAT DHCP 根据 MAC 地址分配固定 IP
->   - 理由：先验证 DHCP 动态分配是否满足需求，后续再考虑静态保留
+>   - 当前配置：Packer 构建 VM 使用固定 MAC，VMware NAT DHCP 根据 MAC 分配固定构建 IP
+>   - Packer 通过 `ssh_host` 显式连接该固定构建 IP，避免 VMware/Packer 从旧 DHCP lease 中探测到错误地址
+>   - 固定构建 IP 仅用于 Packer SSH，不写入最终 Ubuntu 镜像，避免克隆 VM 后发生 IP 冲突
+>   - 理由：构建过程需要稳定可重复的 SSH 地址，交付镜像仍需保持网络配置通用
 > - **Packer 构建优化策略**：
 >   - VMware 插件版本固定为 `~> 1.2.0`，降低插件升级导致的兼容性风险
 >   - 网络适配器使用 `vmxnet3`，适配 Ubuntu 24 的 VMware 虚拟化驱动能力

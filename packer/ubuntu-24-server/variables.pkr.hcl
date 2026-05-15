@@ -60,6 +60,18 @@ variable "network_bridge" {
   description = "网络桥接模式 (VMnet0=桥接, VMnet1=HostOnly, NAT=VMnet8)"
 }
 
+variable "build_ssh_host" {
+  type        = string
+  default     = "192.168.40.150"
+  description = "Packer 构建期 SSH 地址；需在 VMware NAT DHCP 中为 build_mac_address 配置静态保留"
+}
+
+variable "build_mac_address" {
+  type        = string
+  default     = "00:50:56:24:15:01"
+  description = "Packer 构建 VM 的固定 MAC；配合 VMware NAT DHCP 静态保留，避免 SSH 连接到过期 DHCP 租约"
+}
+
 # 输出目录
 variable "output_directory" {
   type        = string
