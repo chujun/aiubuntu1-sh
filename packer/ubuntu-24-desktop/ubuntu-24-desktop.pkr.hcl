@@ -49,11 +49,12 @@ source "vmware-iso" "ubuntu-24-desktop" {
   # SSH 配置
   # 构建期使用 VMware NAT DHCP 的 MAC 静态保留地址，避免 Packer 从旧 DHCP lease 中探测到错误 IP。
   # 注意：该固定 IP 仅用于 Packer SSH，不写入最终 Ubuntu 镜像，避免克隆后发生 IP 冲突。
-  ssh_host               = var.build_ssh_host
-  ssh_username           = var.ssh_username
-  ssh_password           = var.ssh_password
-  ssh_port               = 22
-  ssh_timeout            = "45m"
+  ssh_host     = var.build_ssh_host
+  ssh_username = var.ssh_username
+  ssh_password = var.ssh_password
+  ssh_port     = 22
+  ssh_timeout  = "45m"
+  # 成功基线允许安装器/live 环境阶段出现短暂认证失败，Packer 会继续重试直到最终系统 SSH 可用。
   ssh_handshake_attempts = 120
 
   # 关机命令 - 优雅关机
@@ -104,6 +105,8 @@ build {
       "df -h / /data",
       "echo '${var.ssh_password}' | sudo -S -p '' rm -f /etc/ssh/sshd_config.d/99-packer.conf",
       "echo '${var.ssh_password}' | sudo -S -p '' systemctl reload ssh || echo '${var.ssh_password}' | sudo -S -p '' systemctl restart ssh",
+      "echo '${var.ssh_password}' | sudo -S -p '' bash -c \"printf '%s\\n' '[Unit]' 'Description=Regenerate SSH host keys for cloned VM' 'ConditionPathExists=!/etc/ssh/ssh_host_ed25519_key' 'Before=ssh.service' '' '[Service]' 'Type=oneshot' 'ExecStart=/usr/bin/ssh-keygen -A' '' '[Install]' 'WantedBy=multi-user.target' > /etc/systemd/system/regenerate-ssh-host-keys.service\"",
+      "echo '${var.ssh_password}' | sudo -S -p '' systemctl enable regenerate-ssh-host-keys.service",
       "echo '${var.ssh_password}' | sudo -S -p '' rm -f /etc/ssh/ssh_host_*",
       "echo '${var.ssh_password}' | sudo -S -p '' truncate -s 0 /etc/machine-id",
       "echo '${var.ssh_password}' | sudo -S -p '' rm -f /var/lib/dbus/machine-id",

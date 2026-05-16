@@ -165,9 +165,6 @@ autoinstall:
     - sleep 5
     - curtin in-target --target=/target -- mkdir -p /etc/ssh/sshd_config.d
     - curtin in-target --target=/target -- bash -c "printf 'PasswordAuthentication yes\nKbdInteractiveAuthentication yes\nUsePAM yes\n' > /etc/ssh/sshd_config.d/99-packer.conf"
-    # 模板交付前 Packer 会删除 SSH host keys；该服务确保克隆 VM 首次启动时在 ssh.service 前生成唯一 host keys。
-    - curtin in-target --target=/target -- bash -c "cat > /etc/systemd/system/regenerate-ssh-host-keys.service <<'EOF'\n[Unit]\nDescription=Regenerate SSH host keys for cloned VM\nConditionPathExists=!/etc/ssh/ssh_host_ed25519_key\nBefore=ssh.service\n\n[Service]\nType=oneshot\nExecStart=/usr/bin/ssh-keygen -A\n\n[Install]\nWantedBy=multi-user.target\nEOF"
-    - curtin in-target --target=/target -- systemctl enable regenerate-ssh-host-keys.service
     - curtin in-target --target=/target -- systemctl enable ssh
     - curtin in-target --target=/target -- systemctl enable gdm3
     - curtin in-target --target=/target -- cloud-init clean --logs
