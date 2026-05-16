@@ -93,9 +93,11 @@
 
 系统必须提供脚本，将 Packer 生成的完整 VMware VM 输出目录复制为一个或多个可独立打开的 VM 目录。
 
-#### 场景：复制多个 VM 副本
-- **当** 执行 `python scripts/vmware/copy_packer_vm.py --source-dir <packer-output> --destination-root <vm-root> --vm-names aiubuntu-s1,aiubuntu-s2`
+#### 场景：按镜像类型默认复制多个 VM 副本
+- **当** 执行 `python scripts/vmware/copy_packer_vm.py --source-dir <server-packer-output> --destination-root <vm-root>`
 - **则** 脚本为每个 VM 名称复制完整 Packer 输出目录
+- **且** server 镜像默认按顺序生成 `ai-packer-s1`、`ai-packer-s2`、`ai-packer-s3`
+- **且** desktop 镜像默认按顺序生成 `ai-packer-d1`、`ai-packer-d2`、`ai-packer-d3`
 - **且** 每个目标目录包含重命名后的 `<vm-name>.vmx`
 - **且** VMX 中的 `displayName` 更新为目标 VM 名称
 

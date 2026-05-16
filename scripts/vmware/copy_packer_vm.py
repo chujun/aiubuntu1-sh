@@ -27,6 +27,11 @@ CONFLICT_KEYS = {
 }
 
 RUNTIME_FILE_PATTERNS = ("vmware.log", "vmware-*.log", "*.vmem", "*.vmss")
+DEFAULT_VM_COUNT = 3
+DEFAULT_NAME_PREFIX_BY_VARIANT = {
+    "server": "ai-packer-s",
+    "desktop": "ai-packer-d",
+}
 
 
 @dataclass(frozen=True)
@@ -67,6 +72,25 @@ def parse_vm_names(raw_values: list[str]) -> list[str]:
     return names
 
 
+def detect_image_variant(source_dir: Path) -> str:
+    text = str(source_dir).lower()
+    if "desktop" in text:
+        return "desktop"
+    if "server" in text:
+        return "server"
+    raise ValueError(
+        "Cannot infer image variant from source directory. "
+        "Use --variant server or --variant desktop."
+    )
+
+
+def generate_default_vm_names(variant: str, count: int) -> list[str]:
+    if count < 1:
+        raise ValueError("--count must be greater than or equal to 1.")
+    prefix = DEFAULT_NAME_PREFIX_BY_VARIANT[variant]
+    return [f"{prefix}{index}" for index in range(1, count + 1)]
+
+
 def resolve_existing_dir(path: Path, label: str) -> Path:
     resolved = path.expanduser().resolve()
     if not resolved.is_dir():
@@ -102,13 +126,14 @@ def update_vmx_identity(vmx_path: Path, vm_name: str) -> None:
             continue
 
         key = match.group(1).strip().lstrip("\ufeff")
-        if key in CONFLICT_KEYS:
+        normalized_key = key.lower()
+        if normalized_key in CONFLICT_KEYS:
             continue
-        if key == "displayName":
+        if normalized_key == "displayname":
             output.append(render_vmx_line("displayName", vm_name))
             seen_display_name = True
             continue
-        if key == "ethernet0.addressType":
+        if normalized_key == "ethernet0.addresstype":
             output.append(render_vmx_line("ethernet0.addressType", "generated"))
             seen_address_type = True
             continue
@@ -219,9 +244,23 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-n",
         "--vm-names",
-        required=True,
+        required=False,
         nargs="+",
-        help="Target VM names. Use comma-separated values or repeated arguments.",
+        help=(
+            "Target VM names. Use comma-separated values or repeated arguments. "
+            "When omitted, names are generated from --variant/--source-dir."
+        ),
+    )
+    parser.add_argument(
+        "--variant",
+        choices=sorted(DEFAULT_NAME_PREFIX_BY_VARIANT),
+        help="Image variant used for default names. Inferred from --source-dir when omitted.",
+    )
+    parser.add_argument(
+        "--count",
+        type=int,
+        default=DEFAULT_VM_COUNT,
+        help="Number of default VM names to generate when --vm-names is omitted. Default: 3.",
     )
     parser.add_argument(
         "--force",
@@ -243,7 +282,11 @@ def main() -> int:
     try:
         source_dir = resolve_existing_dir(args.source_dir, "Source directory")
         destination_root = args.destination_root.expanduser().resolve()
-        vm_names = parse_vm_names(args.vm_names)
+        variant = args.variant or detect_image_variant(source_dir)
+        if args.vm_names:
+            vm_names = parse_vm_names(args.vm_names)
+        else:
+            vm_names = generate_default_vm_names(variant, args.count)
 
         if not args.dry_run:
             destination_root.mkdir(parents=True, exist_ok=True)
@@ -257,6 +300,7 @@ def main() -> int:
             "created_at": datetime.now().isoformat(timespec="seconds"),
             "source_dir": str(source_dir),
             "destination_root": str(destination_root),
+            "variant": variant,
             "vm_count": len(results),
             "results": results,
         }
